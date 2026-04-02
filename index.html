@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="bg">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Какъв час имам - ЦСОП Леда Милева</title>
+    <!-- Зареждане на React, ReactDOM и Babel -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- Зареждане на Tailwind CSS за стилизация -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+        .fade-in { animation: fadeIn 0.4s ease-out forwards; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        select { background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e"); background-position: right 1.5rem center; background-repeat: no-repeat; background-size: 2em 2em; padding-right: 4rem; -webkit-appearance: none; -moz-appearance: none; appearance: none; }
+        /* Персонализиран скролбар за по-добър вид */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 antialiased min-h-screen flex flex-col">
+    <div id="root" class="flex flex-col flex-1 w-full h-full"></div>
+
+    <script type="text/babel">
+
+        // --- ДАННИ ОТ РАЗПИСАНИЕТО ---
+
+        const PARALELKI = [
+            "Подготвителна група", 
+            "I паралелка (1-4 клас)", 
+            "II паралелка (2 клас)", 
+            "III паралелка (3 клас)",
+            "IV паралелка (5 клас)", 
+            "V паралелка (6 клас)", 
+            "VI паралелка (7 клас)", 
+            "VII паралелка (8А клас)", 
+            "VIII паралелка (8Б клас)", 
+            "IX паралелка (9А клас)", 
+            "X паралелка (9Б клас)", 
+            "XI паралелка (10 клас)", 
+            "XII паралелка (11-12 клас)"
+        ];
+
+        const TEACHERS = {
+            "1": "Калинка Илиева", "2": "Галя Ненчева", "3": "Петринка Нанова",
+            "4": "Цветанка Брайкова", "5": "Огнян Йорданов", "6": "Атанас Атанасов",
+            "7": "Цветанка Михайлова", "8": "Петя Миланова", "9": "Тони Иванов",
+            "10": "Валентин Кръстев", "11": "Таня Петкова", "12": "Габриела Мандалева",
+            "13": "Гергана Ненова",
+            "ПСР1": "Милена Рачовска", 
+            "ПСР2": "Любомира Любенова",
+            "РКН": "Весела Стоянова", 
+            "ЕРГО": "Катина Василева"
+        };
+
+        const FULL_SCHEDULE = {
+            "Подготвителна група": {
+                "понеделник": { 1: {subject: "ОН БЕЛ", teacher: "11"}, 2: {subject: "ОН Математика", teacher: "11"}, 3: {subject: "ОН Музика", teacher: "11"}, 4: {subject: "ОН Физическа култура", teacher: "11"}, 5: {subject: "Доп. форми", teacher: "11"} },
+                "вторник": { 1: {subject: "ОН Математика", teacher: "11"}, 2: {subject: "ОН Околен свят", teacher: "11"}, 3: {subject: "ОН Изобр. изкуство", teacher: "11"}, 4: {subject: "ОН Изобр. изкуство", teacher: "11"}, 5: {subject: "Доп. форми", teacher: "11"} },
+                "сряда": { 1: {subject: "ОН БЕЛ", teacher: "11"}, 2: {subject: "ОН Музика", teacher: "11"}, 3: {subject: "ОН Физическа култура", teacher: "11"}, 4: {subject: "Доп. форми", teacher: "11"}, 5: {subject: "Доп. форми", teacher: "11"} },
+                "четвъртък": { 1: {subject: "ОН Математика", teacher: "11"}, 2: {subject: "ОН Околен свят", teacher: "11"}, 3: {subject: "ОН Физическа култура", teacher: "11"}, 4: {subject: "Доп. форми", teacher: "11"}, 5: {subject: "Доп. форми", teacher: "11"} },
+                "петък": { 1: {subject: "ОН БЕЛ", teacher: "11"}, 2: {subject: "ОН Конструиране", teacher: "11"}, 3: {subject: "ОН Конструиране", teacher: "11"}, 4: {subject: "Доп. форми", teacher: "11"}, 5: {subject: "Доп. форми", teacher: "11"} }
+            },
+            "I паралелка (1-4 клас)": {
+                "понеделник": { 1: {subject: "Логопед", teacher: "РКН"}, 2: {subject: "БЕЛ", teacher: "3"}, 3: {subject: "БЕЛ", teacher: "3"}, 4: {subject: "Ок", teacher: ""}, 5: {subject: "ДЧ по ФВС", teacher: "10"} },
+                "вторник": { 1: {subject: "Математика", teacher: "3"}, 2: {subject: "Музика", teacher: "13"}, 3: {subject: "БЕЛ", teacher: "3"}, 4: {subject: "Ок", teacher: ""}, 5: {subject: "ФВС", teacher: "3"} },
+                "сряда": { 1: {subject: "Родинознание", teacher: "3"}, 2: {subject: "БЕЛ", teacher: "3"}, 3: {subject: "ФВС", teacher: "3"}, 4: {subject: "Логопед", teacher: "РКН"}, 5: {subject: "Ерготерапия", teacher: "ЕРГО"}, 6: {subject: "Психолог", teacher: "ПСР2"} },
+                "четвъртък": { 1: {subject: "Ерготерапия", teacher: "ЕРГО"}, 2: {subject: "Музика", teacher: "13"}, 3: {subject: "Психолог", teacher: "ПСР2"}, 4: {subject: "Математика", teacher: "3"}, 5: {subject: "Психолог", teacher: "ПСР2"} },
+                "петък": { 1: {subject: "Технологии", teacher: "13"}, 2: {subject: "БЕЛ", teacher: "3"}, 3: {subject: "Математика", teacher: "3"}, 4: {subject: "Изобр. изкуство", teacher: "3"}, 5: {subject: "Изобр. изкуство", teacher: "3"} }
+            },
+            "II паралелка (2 клас)": {
+                "понеделник": { 1: {subject: "Логопед", teacher: "РКН"}, 2: {subject: "БЕЛ", teacher: "3"}, 3: {subject: "БЕЛ", teacher: "3"}, 4: {subject: "Човекът и природата", teacher: "3"}, 5: {subject: "ДЧ по ФВС", teacher: "10"} },
+                "вторник": { 1: {subject: "Математика", teacher: "3"}, 2: {subject: "Ок", teacher: ""}, 3: {subject: "БЕЛ", teacher: "3"}, 4: {subject: "Комп. моделиране", teacher: "6"}, 5: {subject: "ФВС", teacher: "3"} },
+                "сряда": { 1: {subject: "Човекът и обществото", teacher: "3"}, 2: {subject: "БЕЛ", teacher: "3"}, 3: {subject: "ФВС", teacher: "3"}, 4: {subject: "Логопед", teacher: "РКН"} },
+                "четвъртък": { 1: {subject: "Музика", teacher: "13"}, 2: {subject: "Психолог", teacher: "ПСР2"}, 3: {subject: "Математика", teacher: "3"}, 4: {subject: "Човекът и природата", teacher: "3"} },
+                "петък": { 1: {subject: "Технологии", teacher: "13"}, 2: {subject: "БЕЛ", teacher: "3"}, 3: {subject: "Математика", teacher: "3"}, 4: {subject: "Изобр. изкуство", teacher: "3"}, 5: {subject: "Изобр. изкуство", teacher: "3"} }
+            },
+            "III паралелка (3 клас)": {
+                "понеделник": { 1: {subject: "ДЧ по ФВС", teacher: "10"}, 2: {subject: "БЕЛ", teacher: "13"}, 3: {subject: "БЕЛ", teacher: "13"}, 4: {subject: "ФВС", teacher: "13"}, 5: {subject: "Музика", teacher: "13"}, 6: {subject: "Психолог", teacher: "ПСР2"} },
+                "вторник": { 1: {subject: "БЕЛ", teacher: "13"}, 2: {subject: "Психолог", teacher: "ПСР2"}, 3: {subject: "Математика", teacher: "13"}, 4: {subject: "Изобр. изкуство", teacher: "13"}, 5: {subject: "Изобр. изкуство", teacher: "13"}, 6: {subject: "ДЧ по ФВС", teacher: "10"} },
+                "сряда": { 1: {subject: "Логопед", teacher: "РКН"}, 2: {subject: "БЕЛ", teacher: "13"}, 3: {subject: "Психолог", teacher: "ПСР2"}, 4: {subject: "Родинознание", teacher: "13"}, 5: {subject: "Математика", teacher: "13"}, 6: {subject: "Технологии", teacher: "13"} },
+                "четвъртък": { 1: {subject: "Логопед", teacher: "РКН"}, 2: {subject: "Технологии", teacher: "13"}, 3: {subject: "Математика", teacher: "13"}, 4: {subject: "Музика", teacher: "13"} },
+                "петък": { 1: {subject: "Психолог", teacher: "ПСР2"}, 2: {subject: "Ерготерапия", teacher: "ЕРГО"}, 3: {subject: "БЕЛ", teacher: "13"}, 4: {subject: "ФВС", teacher: "13"}, 5: {subject: "Ок", teacher: ""} }
+            },
+            "IV паралелка (5 клас)": {
+                "понеделник": { 1: {subject: "БЕЛ", teacher: "2"}, 2: {subject: "БЕЛ", teacher: "2"}, 3: {subject: "История", teacher: "9"}, 4: {subject: "Човекът и природата", teacher: "9"}, 5: {subject: "Музика", teacher: "9"}, 6: {subject: "Математика", teacher: "4"} },
+                "вторник": { 1: {subject: "БЕЛ", teacher: "2"}, 2: {subject: "Математика", teacher: "3"}, 3: {subject: "География", teacher: "9"}, 4: {subject: "Музика", teacher: "9"}, 5: {subject: "Логопед", teacher: "РКН"}, 6: {subject: "Ерготерапия", teacher: "ЕРГО"} },
+                "сряда": { 1: {subject: "БЕЛ", teacher: "2"}, 2: {subject: "Човекът и природата", teacher: "9"}, 3: {subject: "Логопед", teacher: "РКН"}, 4: {subject: "Психолог", teacher: "ПСР2"}, 5: {subject: "Комп. моделиране", teacher: "6"}, 6: {subject: "Технологии", teacher: "4"} },
+                "четвъртък": { 1: {subject: "БЕЛ", teacher: "2"}, 2: {subject: "Математика", teacher: "3"}, 3: {subject: "История", teacher: "9"}, 4: {subject: "Технологии", teacher: "9"}, 5: {subject: "ФВС", teacher: "9"}, 6: {subject: "Изобр. изкуство", teacher: "4"} },
+                "петък": { 1: {subject: "Математика", teacher: "3"}, 2: {subject: "ФВС", teacher: "9"}, 3: {subject: "География", teacher: "9"}, 4: {subject: "Изобр. изкуство", teacher: "9"}, 5: {subject: "Изобр. изкуство", teacher: "9"}, 6: {subject: "ДЧ по ФВС", teacher: "10"} }
+            },
+            "V паралелка (6 клас)": {
+                "понеделник": { 1: {subject: "География", teacher: "4"}, 2: {subject: "ФВС", teacher: "4"}, 3: {subject: "БЕЛ", teacher: "4"}, 4: {subject: "Ок", teacher: ""}, 5: {subject: "Ерготерапия", teacher: "ЕРГО"}, 6: {subject: "Математика", teacher: "3"} },
+                "вторник": { 1: {subject: "Човекът и природата", teacher: "4"}, 2: {subject: "БЕЛ", teacher: "4"}, 3: {subject: "БЕЛ", teacher: "4"}, 4: {subject: "Музика", teacher: "4"}, 5: {subject: "ДЧ по ФВС", teacher: "10"} },
+                "сряда": { 1: {subject: "История", teacher: "4"}, 2: {subject: "Математика", teacher: "4"}, 3: {subject: "Логопед", teacher: "РКН"}, 4: {subject: "ФВС", teacher: "4"}, 5: {subject: "Психолог", teacher: "ПСР2"}, 6: {subject: "Математика", teacher: "3"} },
+                "четвъртък": { 1: {subject: "Изобр. изкуство", teacher: "4"}, 2: {subject: "Изобр. изкуство", teacher: "4"}, 3: {subject: "БЕЛ", teacher: "4"}, 4: {subject: "Математика", teacher: "4"}, 5: {subject: "География", teacher: "4"} },
+                "петък": { 1: {subject: "Музика", teacher: "4"}, 2: {subject: "Човекът и природата", teacher: "4"}, 3: {subject: "Комп. моделиране", teacher: "6"}, 4: {subject: "БЕЛ", teacher: "4"}, 5: {subject: "История", teacher: "4"}, 6: {subject: "Логопед", teacher: "РКН"} }
+            },
+            "VI паралелка (7 клас)": {
+                "понеделник": { 1: {subject: "История", teacher: "7"}, 2: {subject: "Музика", teacher: "7"}, 3: {subject: "Комп. моделиране", teacher: "6"}, 4: {subject: "Логопед", teacher: "РКН"}, 5: {subject: "ОЗ Растениевъдство", teacher: "12"}, 6: {subject: "ОЗ Растениевъдство", teacher: "12"} },
+                "вторник": { 1: {subject: "Психолог", teacher: "ПСР2"}, 2: {subject: "ФВС", teacher: "10"}, 3: {subject: "БЕЛ", teacher: "5"}, 4: {subject: "География", teacher: "7"}, 5: {subject: "Биология", teacher: "2"}, 6: {subject: "Психолог", teacher: "ПСР2"} },
+                "сряда": { 1: {subject: "БЕЛ", teacher: "5"}, 2: {subject: "Биология", teacher: "2"}, 3: {subject: "Изобр. изкуство", teacher: "9"}, 4: {subject: "Музика", teacher: "7"}, 5: {subject: "Математика", teacher: "6"}, 6: {subject: "География", teacher: "7"} },
+                "четвъртък": { 1: {subject: "Математика", teacher: "3"}, 2: {subject: "Технологии", teacher: "9"}, 3: {subject: "БЕЛ", teacher: "5"}, 4: {subject: "География", teacher: "7"}, 5: {subject: "ДЧ по ФВС", teacher: "10"} },
+                "петък": { 1: {subject: "История", teacher: "7"}, 2: {subject: "ФВС", teacher: "10"}, 3: {subject: "БЕЛ", teacher: "5"}, 4: {subject: "БЕЛ", teacher: "5"}, 5: {subject: "Логопед", teacher: "РКН"} }
+            },
+            "VII паралелка (8А клас)": {
+                "понеделник": { 1: {subject: "УП ОЗ Растениевъдство", teacher: "12"}, 2: {subject: "УП ОЗ Растениевъдство", teacher: "12"}, 3: {subject: "Ерготерапия", teacher: "ЕРГО"} },
+                "вторник": { 1: {subject: "БЕЛ", teacher: "5"}, 2: {subject: "Математика", teacher: "6"}, 3: {subject: "История", teacher: "7"}, 4: {subject: "Предприемачество", teacher: "12"}, 5: {subject: "ДЧ по ФВС", teacher: "1"} },
+                "сряда": { 1: {subject: "ФВС", teacher: "10"}, 2: {subject: "Биология", teacher: "7"}, 3: {subject: "ОЗ Механизация", teacher: "12"}, 4: {subject: "БЕЛ", teacher: "7"}, 5: {subject: "Математика", teacher: "6"}, 6: {subject: "История", teacher: "7"} },
+                "четвъртък": { 1: {subject: "ОЗ Механизация", teacher: "12"}, 2: {subject: "УП ОЗ Механизация", teacher: "12"}, 3: {subject: "УП ОЗ Механизация", teacher: "12"}, 4: {subject: "Инф. технологии", teacher: "6"}, 5: {subject: "Психолог", teacher: "ПСР2"} },
+                "петък": { 1: {subject: "БЕЛ", teacher: "5"}, 2: {subject: "БЕЛ", teacher: "5"}, 3: {subject: "ФВС", teacher: "10"}, 4: {subject: "Психолог", teacher: "ПСР2"} }
+            },
+            "VIII паралелка (8Б клас)": {
+                "понеделник": { 1: {subject: "ПМШП", teacher: "8"}, 2: {subject: "УП ПМШП", teacher: "8"}, 3: {subject: "УП ПМШП", teacher: "8"}, 4: {subject: "УП ПМШП", teacher: "8"}, 5: {subject: "ДЧ по ФВС", teacher: "1"} },
+                "вторник": { 1: {subject: "БЕЛ", teacher: "7"}, 2: {subject: "География", teacher: "7"}, 3: {subject: "Математика", teacher: "6"}, 4: {subject: "Материалознание", teacher: "8"}, 5: {subject: "Изобр. изкуство", teacher: "9"} },
+                "сряда": { 1: {subject: "БЕЛ", teacher: "7"}, 2: {subject: "Математика", teacher: "6"}, 3: {subject: "История", teacher: "7"}, 4: {subject: "ФВС", teacher: "10"}, 5: {subject: "Психолог", teacher: "ПСР2"} },
+                "четвъртък": { 1: {subject: "ПМШП", teacher: "8"}, 2: {subject: "УП ПМШП", teacher: "8"}, 3: {subject: "УП ПМШП", teacher: "8"}, 4: {subject: "ФВС", teacher: "10"}, 5: {subject: "Ок", teacher: ""}, 6: {subject: "Психолог", teacher: "ПСР2"} },
+                "петък": { 1: {subject: "Ерготерапия", teacher: "ЕРГО"}, 2: {subject: "БЕЛ", teacher: "7"}, 3: {subject: "Предприемачество", teacher: "12"}, 4: {subject: "Биология", teacher: "7"}, 5: {subject: "Инф. технологии", teacher: "6"} }
+            },
+            "IX паралелка (9А клас)": {
+                "понеделник": { 1: {subject: "БЕЛ", teacher: "5"}, 2: {subject: "Математика", teacher: "6"}, 3: {subject: "ФВС", teacher: "10"}, 4: {subject: "ПМШП", teacher: "8"} },
+                "вторник": { 1: {subject: "ПМШП", teacher: "8"}, 2: {subject: "УП ПМШП", teacher: "8"}, 3: {subject: "УП ПМШП", teacher: "8"}, 4: {subject: "Биология", teacher: "3"}, 5: {subject: "Музика", teacher: "7"}, 6: {subject: "ЗБУТ", teacher: "12"} },
+                "сряда": { 1: {subject: "ПМШП", teacher: "8"}, 2: {subject: "УП ПМШП", teacher: "8"}, 3: {subject: "УП ПМШП", teacher: "8"}, 4: {subject: "УП ПМШП", teacher: "8"}, 5: {subject: "Ерготерапия", teacher: "ЕРГО"} },
+                "четвъртък": { 1: {subject: "БЕЛ", teacher: "5"}, 2: {subject: "География", teacher: "7"}, 3: {subject: "ДЧ по ФВС", teacher: "1"}, 4: {subject: "ПМКП", teacher: "8"}, 5: {subject: "УП ПМКП", teacher: "8"} },
+                "петък": { 1: {subject: "Математика", teacher: "6"}, 2: {subject: "Инф. технологии", teacher: "6"}, 3: {subject: "Ерготерапия", teacher: "ЕРГО"}, 4: {subject: "ФВС", teacher: "10"}, 5: {subject: "ЗБУТ", teacher: "12"} }
+            },
+            "X паралелка (9Б клас)": {
+                "понеделник": { 1: {subject: "БЕЛ", teacher: "5"}, 2: {subject: "Математика", teacher: "6"}, 3: {subject: "ФВС", teacher: "10"}, 4: {subject: "БЕЛ", teacher: "5"}, 5: {subject: "География", teacher: "7"}, 6: {subject: "История", teacher: "7"}, 7: {subject: "ДЧ по ФВС", teacher: "10"} },
+                "вторник": { 1: {subject: "Ботаника", teacher: "12"}, 2: {subject: "Ботаника", teacher: "12"}, 3: {subject: "БЕЛ", teacher: "5"}, 4: {subject: "Ерготерапия", teacher: "ЕРГО"} },
+                "сряда": { 1: {subject: "Ботаника", teacher: "12"}, 2: {subject: "УП Ботаника", teacher: "12"}, 3: {subject: "УП Ботаника", teacher: "12"}, 4: {subject: "УП Ботаника", teacher: "12"}, 5: {subject: "Психолог", teacher: "ПСР1"} },
+                "четвъртък": { 1: {subject: "Математика", teacher: "6"}, 2: {subject: "БЕЛ", teacher: "5"}, 3: {subject: "Инф. технологии", teacher: "6"}, 4: {subject: "Ерготерапия", teacher: "ЕРГО"}, 5: {subject: "Психолог", teacher: "ПСР1"} },
+                "петък": { 1: {subject: "Растениевъдство", teacher: "12"}, 2: {subject: "УП Растениевъдство", teacher: "12"}, 3: {subject: "Биология", teacher: "4"}, 4: {subject: "ЗБУТ", teacher: "12"}, 5: {subject: "ФВС", teacher: "10"} }
+            },
+            "XI паралелка (10 клас)": {
+                "понеделник": { 1: {subject: "География", teacher: "7"}, 2: {subject: "Математика", teacher: "6"}, 3: {subject: "Ерготерапия", teacher: "ЕРГО"}, 4: {subject: "БЕЛ", teacher: "5"}, 5: {subject: "Психолог", teacher: "ПСР2"} },
+                "вторник": { 1: {subject: "Математика", teacher: "6"}, 2: {subject: "БЕЛ", teacher: "5"}, 3: {subject: "ДЧ по ФВС", teacher: "10"}, 4: {subject: "Психолог", teacher: "ПСР2"}, 5: {subject: "Инф. технологии", teacher: "6"} },
+                "сряда": { 1: {subject: "БЕЛ", teacher: "5"}, 2: {subject: "ФВС", teacher: "10"}, 3: {subject: "Биология", teacher: "9"}, 4: {subject: "Ерготерапия", teacher: "ЕРГО"}, 5: {subject: "Изобр. изкуство", teacher: "9"}, 6: {subject: "Ерготерапия", teacher: "ЕРГО"} },
+                "четвъртък": { 1: {subject: "История", teacher: "7"}, 2: {subject: "ФВС", teacher: "10"}, 3: {subject: "Психолог", teacher: "ПСР2"}, 4: {subject: "Икономика", teacher: "12"}, 5: {subject: "Ерготерапия", teacher: "ЕРГО"} },
+                "петък": { 1: {subject: "ПМШП", teacher: "8"}, 2: {subject: "УП ПМКП", teacher: "8"}, 3: {subject: "УП ПМКП", teacher: "8"}, 4: {subject: "УП ПМКП", teacher: "8"}, 5: {subject: "Ерготерапия", teacher: "ЕРГО"} }
+            },
+            "XII паралелка (11-12 клас)": {
+                "понеделник": { 1: {subject: "Ерготерапия", teacher: "ЕРГО"}, 2: {subject: "Проф. предмет", teacher: "9"}, 3: {subject: "ФВС", teacher: "10"}, 4: {subject: "Психолог", teacher: "ПСР2"}, 5: {subject: "Проф. предмет", teacher: "6"} },
+                "вторник": { 1: {subject: "Проф. предмет", teacher: "9"}, 2: {subject: "Проф. предмет", teacher: "9"}, 3: {subject: "Психолог", teacher: "ПСР2"}, 4: {subject: "Ерготерапия", teacher: "ЕРГО"}, 5: {subject: "БЕЛ", teacher: "5"} },
+                "сряда": { 1: {subject: "Психолог", teacher: "ПСР2"}, 2: {subject: "Математика", teacher: "6"}, 3: {subject: "БЕЛ", teacher: "5"}, 4: {subject: "ФВС", teacher: "10"}, 5: {subject: "Ерготерапия", teacher: "ЕРГО"} },
+                "четвъртък": { 1: {subject: "Психолог", teacher: "ПСР2"}, 2: {subject: "Математика", teacher: "6"}, 3: {subject: "Ерготерапия", teacher: "ЕРГО"}, 4: {subject: "Гражданско образование", teacher: "5"}, 5: {subject: "БЕЛ", teacher: "5"} },
+                "петък": { 1: {subject: "Проф. предмет", teacher: "9"}, 2: {subject: "ДЧ по ФВС", teacher: "1"}, 3: {subject: "Психолог", teacher: "ПСР2"}, 4: {subject: "Ерготерапия", teacher: "ЕРГО"}, 5: {subject: "Психолог", teacher: "ПСР2"} }
+            }
+        };
+
+        // Логика за генериране на графика на учителите
+        function getTeacherSchedule(teacherId) {
+            let tSched = { "понеделник": {}, "вторник": {}, "сряда": {}, "четвъртък": {}, "петък": {} };
+            Object.keys(FULL_SCHEDULE).forEach(paralelkaName => {
+                let pData = FULL_SCHEDULE[paralelkaName];
+                Object.keys(pData).forEach(day => {
+                    Object.keys(pData[day]).forEach(hour => {
+                        // Ок няма прикрепен учител (""), така че не влиза в графика
+                        if (pData[day][hour].teacher === teacherId && teacherId !== "") {
+                            tSched[day][hour] = {
+                                subject: pData[day][hour].subject,
+                                isWith: paralelkaName,
+                                teacher: teacherId
+                            };
+                        }
+                    });
+                });
+            });
+            return tSched;
+        }
+
+        // --- ЛОГИКА ЗА ВРЕМЕТО ---
+
+        const parseTime = (timeStr) => {
+            const [h, m] = timeStr.split(':').map(Number);
+            return h * 60 + m;
+        };
+
+        const formatTimeDisplay = (mins) => {
+            const h = Math.floor(mins / 60).toString().padStart(2, '0');
+            const m = (mins % 60).toString().padStart(2, '0');
+            return `${h}:${m}`;
+        };
+
+        // ОБНОВЕН График на звънеца спрямо снимката от ЦСОП (часове по 35 мин)
+        const SLOTS = [
+            { id: 1, start: parseTime('08:00'), end: parseTime('08:35') },
+            { id: 2, start: parseTime('08:45'), end: parseTime('09:20') },
+            { id: 3, start: parseTime('09:30'), end: parseTime('10:05') }, // Голямо междучасие след 3-ти час 30 мин
+            { id: 4, start: parseTime('10:35'), end: parseTime('11:10') },
+            { id: 5, start: parseTime('11:20'), end: parseTime('11:55') },
+            { id: 6, start: parseTime('12:05'), end: parseTime('12:40') },
+            { id: 7, start: parseTime('12:50'), end: parseTime('13:25') } // Добавен по същата логика за паралелките със 7ми час
+        ];
+
+        // --- ФОРМАТИРАНЕ ---
+
+        const formatTeacherName = (name) => {
+            if (!name) return "";
+            const firstName = name.split(' ')[0];
+            if (firstName.endsWith('а') || firstName.endsWith('я')) {
+                return 'г-жа ' + name;
+            } else {
+                return 'г-н ' + name;
+            }
+        };
+
+        const getOrdinal = (num) => {
+            const ordinals = { 1: "1-ви", 2: "2-ри", 3: "3-ти", 4: "4-ти", 5: "5-ти", 6: "6-ти", 7: "7-ми" };
+            return ordinals[num] || `${num}-ти`;
+        };
+
+        const getStatus = (todaySchedule, currentMins) => {
+            if (!todaySchedule || Object.keys(todaySchedule).length === 0) return { type: 'no_data' };
+
+            let currentSlot = SLOTS.find(s => currentMins >= s.start && currentMins <= s.end);
+            
+            const findNextClass = (mins) => {
+                for (let s of SLOTS) {
+                    if (s.start > mins && todaySchedule[s.id]) {
+                        return { slot: s, data: todaySchedule[s.id] };
+                    }
+                }
+                return null;
+            };
+
+            if (currentSlot) {
+                let classData = todaySchedule[currentSlot.id];
+                if (classData) {
+                    return { type: 'in_class', slot: currentSlot, data: classData, startedAgo: currentMins - currentSlot.start };
+                } else {
+                    let next = findNextClass(currentMins);
+                    return { type: 'free_period', nextClass: next };
+                }
+            }
+
+            if (currentMins < SLOTS[0].start) {
+                let next = findNextClass(currentMins);
+                return { type: 'before_school', nextClass: next };
+            }
+
+            if (currentMins > SLOTS[SLOTS.length-1].end) {
+                return { type: 'after_school' };
+            }
+
+            let next = findNextClass(currentMins);
+            if (next) {
+                return { type: 'break', nextClass: next, startsIn: next.slot.start - currentMins };
+            }
+
+            return { type: 'after_school' };
+        };
+
+        // --- КОМПОНЕНТИ ---
+
+        const Icons = {
+            Student: () => <svg xmlns="http://www.w3.org/2000/svg" className="w-20 h-20 mb-4 text-blue-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>,
+            Teacher: () => <svg xmlns="http://www.w3.org/2000/svg" className="w-20 h-20 mb-4 text-emerald-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>,
+            Back: () => <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>,
+            Clock: () => <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>,
+            User: () => <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        };
+
+        // --- КОМПОНЕНТ ЗА СНИМКА НА УЧИТЕЛ (С ПОДДРЪЖКА НА JPG, JPEG, PNG) ---
+        const TeacherAvatar = ({ teacherId, sizeClass = "w-12 h-12" }) => {
+            const [hasError, setHasError] = React.useState(false);
+            const [extIndex, setExtIndex] = React.useState(0);
+            const extensions = ['jpg', 'jpeg', 'png'];
+
+            // Рестартиране на статуса при смяна на учителя
+            React.useEffect(() => {
+                setHasError(false);
+                setExtIndex(0);
+            }, [teacherId]);
+
+            // Ако сме изчерпали всички формати или няма учител, показваме иконка
+            if (!teacherId || hasError) {
+                return (
+                    <div className={`${sizeClass} rounded-full bg-slate-200 flex items-center justify-center text-slate-400 shrink-0 border-4 border-white shadow-sm [&>svg]:w-1/2 [&>svg]:h-1/2 [&>svg]:mr-0`}>
+                        <Icons.User />
+                    </div>
+                );
+            }
+
+            // Функция, която опитва следващия формат, ако текущият не бъде намерен
+            const handleError = () => {
+                if (extIndex < extensions.length - 1) {
+                    setExtIndex(prev => prev + 1);
+                } else {
+                    setHasError(true);
+                }
+            };
+
+            return (
+                <img
+                    src={`photos/${teacherId}.${extensions[extIndex]}`}
+                    alt="Учител"
+                    className={`${sizeClass} rounded-full object-cover object-center border-4 border-white shadow-md shrink-0 bg-slate-100`}
+                    onError={handleError}
+                />
+            );
+        };
+
+        function App() {
+            const [view, setView] = React.useState('home');
+            const [userType, setUserType] = React.useState(''); // 'student' or 'teacher'
+            const [selectedId, setSelectedId] = React.useState('');
+            
+            const [currentTime, setCurrentTime] = React.useState(new Date());
+            const [testTimeMode, setTestTimeMode] = React.useState(false);
+            const [mockTime, setMockTime] = React.useState('08:05');
+            const [timeOffset, setTimeOffset] = React.useState(0);
+            const [timeSyncStatus, setTimeSyncStatus] = React.useState('syncing');
+
+            React.useEffect(() => {
+                const fetchTime = async () => {
+                    try {
+                        const res = await fetch('https://worldtimeapi.org/api/timezone/Europe/Sofia', { cache: 'no-store' });
+                        if (!res.ok) throw new Error('API 1 Network error');
+                        const data = await res.json();
+                        const internetTime = new Date(data.datetime).getTime();
+                        setTimeOffset(internetTime - Date.now());
+                        setTimeSyncStatus('synced');
+                    } catch (err1) {
+                        try {
+                            const res2 = await fetch('https://timeapi.io/api/Time/current/zone?timeZone=UTC', { cache: 'no-store' });
+                            if (!res2.ok) throw new Error('API 2 Network error');
+                            const data2 = await res2.json();
+                            const internetTime = new Date(data2.dateTime + "Z").getTime();
+                            setTimeOffset(internetTime - Date.now());
+                            setTimeSyncStatus('synced');
+                        } catch (err2) {
+                            setTimeSyncStatus('failed');
+                        }
+                    }
+                };
+                fetchTime();
+            }, []);
+
+            React.useEffect(() => {
+                if (!testTimeMode) {
+                    const timer = setInterval(() => setCurrentTime(new Date(Date.now() + timeOffset)), 1000);
+                    setCurrentTime(new Date(Date.now() + timeOffset));
+                    return () => clearInterval(timer);
+                } else {
+                    const [h, m] = mockTime.split(':');
+                    const d = new Date(Date.now() + timeOffset);
+                    d.setHours(h);
+                    d.setMinutes(m);
+                    if (d.getDay() === 0 || d.getDay() === 6) {
+                        d.setDate(d.getDate() - (d.getDay() === 0 ? 6 : 5));
+                    }
+                    setCurrentTime(d);
+                }
+            }, [testTimeMode, mockTime, timeOffset]);
+
+            const goHome = () => {
+                setView('home');
+                setSelectedId('');
+            };
+
+            let dayOfWeek, currentMins;
+            if (testTimeMode) {
+                dayOfWeek = currentTime.getDay();
+                currentMins = currentTime.getHours() * 60 + currentTime.getMinutes();
+            } else {
+                try {
+                    const formatter = new Intl.DateTimeFormat('en-US', {
+                        timeZone: 'Europe/Sofia',
+                        weekday: 'short',
+                        hour: 'numeric',
+                        minute: 'numeric',
+                        hourCycle: 'h23'
+                    });
+                    const parts = formatter.formatToParts(currentTime);
+                    let h = 0, m = 0, wdStr = 'Mon';
+                    parts.forEach(p => {
+                        if (p.type === 'hour') h = parseInt(p.value, 10);
+                        if (p.type === 'minute') m = parseInt(p.value, 10);
+                        if (p.type === 'weekday') wdStr = p.value;
+                    });
+                    const dayMap = { "Sun": 0, "Mon": 1, "Tue": 2, "Wed": 3, "Thu": 4, "Fri": 5, "Sat": 6 };
+                    dayOfWeek = dayMap[wdStr];
+                    currentMins = h * 60 + m;
+                } catch (e) {
+                    dayOfWeek = currentTime.getDay();
+                    currentMins = currentTime.getHours() * 60 + currentTime.getMinutes();
+                }
+            }
+
+            const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+            const dayNames = ["", "понеделник", "вторник", "сряда", "четвъртък", "петък", ""];
+            const todayStr = dayNames[dayOfWeek];
+
+            let currentSchedule = {};
+            if (selectedId && !isWeekend) {
+                if (userType === 'student') {
+                    currentSchedule = (FULL_SCHEDULE[selectedId] && FULL_SCHEDULE[selectedId][todayStr]) || {};
+                } else {
+                    const teacherFullSched = getTeacherSchedule(selectedId);
+                    currentSchedule = teacherFullSched[todayStr] || {};
+                }
+            }
+
+            const status = isWeekend ? { type: 'weekend' } : getStatus(currentSchedule, currentMins);
+
+            const renderHome = () => (
+                <div className="flex flex-col items-center justify-center min-h-[80vh] px-4 fade-in mt-10 w-full max-w-4xl mx-auto">
+                    <h1 className="text-3xl md:text-5xl font-extrabold text-slate-800 text-center mb-4 tracking-tight">Провери какви часове имаш</h1>
+                    <p className="text-slate-500 mb-12 text-lg md:text-xl text-center font-medium">Избери своя профил, за да видиш дневното си разписание.</p>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
+                        <button 
+                            onClick={() => setView('select_student')}
+                            className="flex flex-col items-center justify-center p-8 bg-white rounded-[2rem] shadow-md border-4 border-transparent hover:border-blue-200 hover:shadow-xl hover:-translate-y-1 transition-all group md:h-64"
+                        >
+                            <Icons.Student />
+                            <span className="text-3xl md:text-4xl font-extrabold text-slate-700 group-hover:text-blue-600 transition-colors">Ученици</span>
+                        </button>
+
+                        <button 
+                            onClick={() => setView('select_teacher')}
+                            className="flex flex-col items-center justify-center p-8 bg-white rounded-[2rem] shadow-md border-4 border-transparent hover:border-emerald-200 hover:shadow-xl hover:-translate-y-1 transition-all group md:h-64"
+                        >
+                            <Icons.Teacher />
+                            <span className="text-3xl md:text-4xl font-extrabold text-slate-700 group-hover:text-emerald-600 transition-colors">Учители</span>
+                        </button>
+                    </div>
+                </div>
+            );
+
+            const renderSelector = (type) => {
+                const isStudent = type === 'select_student';
+                const options = isStudent 
+                    ? PARALELKI.map(p => ({ value: p, label: p }))
+                    : Object.keys(TEACHERS).filter(k => k !== "").map(k => ({ value: k, label: TEACHERS[k] }));
+
+                return (
+                    <div className="flex flex-col items-center pt-20 px-4 fade-in w-full max-w-2xl mx-auto">
+                        <button onClick={goHome} className="self-start flex items-center text-slate-500 hover:text-slate-800 mb-8 text-lg font-bold transition-colors">
+                            <Icons.Back /> Назад към началото
+                        </button>
+                        
+                        <div className="bg-white p-8 md:p-10 rounded-[2rem] shadow-xl border border-slate-100 w-full">
+                            <h2 className="text-3xl md:text-4xl font-extrabold text-slate-800 mb-8 text-center">
+                                {isStudent ? "Аз съм ученик от..." : "Аз съм..."}
+                            </h2>
+                            
+                            <select 
+                                className="w-full text-xl md:text-2xl p-4 md:p-6 bg-slate-50 border-4 border-slate-200 rounded-xl mb-8 focus:outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all font-bold text-slate-700 cursor-pointer shadow-inner"
+                                value={selectedId}
+                                onChange={(e) => setSelectedId(e.target.value)}
+                            >
+                                <option value="" disabled>-- Избери от списъка --</option>
+                                {options.map(opt => (
+                                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                ))}
+                            </select>
+
+                            <button 
+                                disabled={!selectedId}
+                                onClick={() => { setUserType(isStudent ? 'student' : 'teacher'); setView('dashboard'); }}
+                                className={`w-full p-4 md:p-6 rounded-xl text-2xl font-black transition-all shadow-md flex items-center justify-center ${selectedId ? 'bg-blue-600 text-white hover:bg-blue-700 hover:shadow-xl transform hover:-translate-y-1' : 'bg-slate-200 text-slate-400 cursor-not-allowed'}`}
+                            >
+                                Продължи
+                            </button>
+                        </div>
+                    </div>
+                );
+            };
+
+            const renderStatusBox = () => {
+                if (status.type === 'weekend') {
+                    return <div className="bg-emerald-100 text-emerald-800 p-6 rounded-[1.5rem] shadow-sm text-center text-2xl font-extrabold border-l-8 border-emerald-500 mb-8">Днес е почивен ден! Приятна почивка!</div>;
+                }
+                if (status.type === 'no_data') {
+                    return <div className="bg-slate-200 text-slate-600 p-6 rounded-[1.5rem] shadow-sm text-center text-2xl font-extrabold mb-8">Няма въведени часове за тази група/учител днес.</div>;
+                }
+                if (status.type === 'after_school') {
+                    return <div className="bg-blue-100 text-blue-800 p-6 rounded-[1.5rem] shadow-sm text-center text-2xl font-extrabold border-l-8 border-blue-500 mb-8">Учебните часове за днес приключиха!</div>;
+                }
+                if (status.type === 'before_school') {
+                    return (
+                        <div className="bg-blue-50 text-blue-800 p-6 rounded-[1.5rem] shadow-sm border-l-8 border-blue-400 mb-8">
+                            <h3 className="text-3xl font-extrabold mb-3">Добро утро!</h3>
+                            {status.nextClass ? (
+                                <p className="text-xl font-medium">Първият ти час е <span className="font-black bg-white px-2 py-1 rounded-md shadow-sm mx-1 text-blue-900">{status.nextClass.data.subject}</span> и започва в <span className="font-black text-blue-900">{formatTimeDisplay(status.nextClass.slot.start)}</span>.</p>
+                            ) : null}
+                        </div>
+                    );
+                }
+                if (status.type === 'in_class') {
+                    let teacherText = "";
+                    let teacherId = null;
+                    if (status.data.teacher) {
+                        teacherText = userType === 'student' ? `при ${formatTeacherName(TEACHERS[status.data.teacher])}` : `с ${status.data.isWith}`;
+                        teacherId = userType === 'student' ? status.data.teacher : null; // Снимка се показва само за ученици
+                    }
+
+                    return (
+                        <div className="bg-orange-50 border-l-8 border-orange-500 p-6 md:p-8 rounded-[1.5rem] shadow-md mb-8 relative overflow-hidden">
+                            <div className="absolute top-0 right-0 p-4 opacity-10 scale-150 transform translate-x-1/4 -translate-y-1/4">
+                                <Icons.Clock />
+                            </div>
+                            
+                            <div className="z-10 relative flex flex-col md:flex-row md:items-center">
+                                <div className="flex-1">
+                                    <h3 className="text-2xl md:text-3xl font-extrabold text-orange-900 mb-2 leading-tight">
+                                        В момента {userType === 'student' ? 'имаш' : 'имате'}
+                                    </h3>
+                                    <div className="text-3xl md:text-4xl font-black text-orange-600 underline decoration-4 underline-offset-4 mb-4 md:mb-0">
+                                        {status.data.subject}
+                                    </div>
+                                </div>
+                                
+                                {teacherText && (
+                                    <div className="flex items-center bg-white/80 p-3 md:p-4 rounded-2xl shadow-sm border border-orange-100 mt-4 md:mt-0 w-max">
+                                        {userType === 'student' && teacherId && (
+                                            <TeacherAvatar teacherId={teacherId} sizeClass="w-16 h-16 md:w-24 md:h-24 mr-4" />
+                                        )}
+                                        <span className="text-xl md:text-3xl font-extrabold text-orange-800">{teacherText}</span>
+                                    </div>
+                                )}
+                            </div>
+
+                            {status.startedAgo > 0 && (
+                                <p className="text-orange-900 text-xl font-black bg-orange-200 inline-block px-4 py-2 rounded-lg mt-4 shadow-sm border border-orange-300 z-10 relative">
+                                    Побързай, часът е започнал преди {status.startedAgo} минути!
+                                </p>
+                            )}
+                        </div>
+                    );
+                }
+                if (status.type === 'break') {
+                    let teacherText = "";
+                    let teacherId = null;
+                    if (status.nextClass.data.teacher) {
+                        teacherText = userType === 'student' ? `при ${formatTeacherName(TEACHERS[status.nextClass.data.teacher])}` : `с ${status.nextClass.data.isWith}`;
+                        teacherId = userType === 'student' ? status.nextClass.data.teacher : null;
+                    }
+
+                    return (
+                        <div className="bg-emerald-50 border-l-8 border-emerald-500 p-6 md:p-8 rounded-[1.5rem] shadow-md mb-8 relative overflow-hidden">
+                            <h3 className="text-3xl font-extrabold text-emerald-900 mb-4">Междучасие!</h3>
+                            
+                            <div className="mb-4 flex flex-col items-start">
+                                <div className="text-emerald-800 text-xl font-medium leading-tight mb-2">
+                                    Следващият <span className="font-black text-2xl text-emerald-900">{getOrdinal(status.nextClass.slot.id)}</span> час {userType === 'student' ? 'имаш' : 'имате'}
+                                </div>
+                                <div className="font-black text-3xl underline decoration-4 underline-offset-4 text-emerald-900 mb-4">
+                                    {status.nextClass.data.subject}
+                                </div>
+                                
+                                {teacherText && (
+                                    <div className="flex items-center bg-white/80 p-3 md:p-4 rounded-2xl shadow-sm border border-emerald-100 w-max">
+                                        {userType === 'student' && teacherId && (
+                                            <TeacherAvatar teacherId={teacherId} sizeClass="w-16 h-16 md:w-24 md:h-24 mr-4" />
+                                        )}
+                                        <span className="text-xl md:text-3xl font-extrabold text-emerald-800">{teacherText}</span>
+                                    </div>
+                                )}
+                            </div>
+                            
+                            <p className="text-emerald-900 text-xl font-black bg-emerald-200 inline-flex items-center px-4 py-2 rounded-lg shadow-sm border border-emerald-300">
+                                <Icons.Clock /> Часът започва след {status.startsIn} минути
+                            </p>
+                        </div>
+                    );
+                }
+                if (status.type === 'free_period') {
+                    return (
+                        <div className="bg-sky-50 border-l-8 border-sky-400 p-6 md:p-8 rounded-[1.5rem] shadow-md mb-8">
+                            <h3 className="text-3xl font-extrabold text-sky-900 mb-4">В момента {userType === 'student' ? 'имаш' : 'имате'} свободен час!</h3>
+                            {status.nextClass ? (
+                                <p className="text-sky-800 text-xl font-medium">Следващият <span className="font-bold">{getOrdinal(status.nextClass.slot.id)}</span> час е <span className="font-black bg-white px-2 py-1 rounded shadow-sm text-sky-900">{status.nextClass.data.subject}</span> и започва след <span className="font-black text-sky-900">{status.nextClass.slot.start - currentMins} минути</span>.</p>
+                            ) : (
+                                <p className="text-sky-800 text-xl font-medium">Нямате повече часове за днес.</p>
+                            )}
+                        </div>
+                    );
+                }
+                return null;
+            };
+
+            const renderDashboard = () => {
+                const displayName = userType === 'student' ? selectedId : TEACHERS[selectedId];
+                const activeSlots = SLOTS.filter(s => currentSchedule[s.id]);
+
+                return (
+                    <div className="max-w-5xl mx-auto pt-8 px-4 pb-20 fade-in w-full flex flex-col flex-1">
+                        <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 bg-white p-5 md:p-6 rounded-[2rem] shadow-sm border border-slate-100">
+                            <button onClick={() => setView(userType === 'student' ? 'select_student' : 'select_teacher')} className="flex items-center justify-center p-3 bg-slate-100 rounded-full shadow-inner text-slate-600 hover:text-blue-600 hover:bg-blue-50 transition-all self-start md:self-auto mb-4 md:mb-0 group w-12 h-12">
+                                <Icons.Back />
+                            </button>
+                            <div className="text-left md:text-right">
+                                <div className="text-sm text-slate-400 font-bold uppercase tracking-widest mb-1">Профил</div>
+                                <div className="text-3xl md:text-4xl font-black text-slate-800 tracking-tight leading-tight">{displayName}</div>
+                                <div className="text-xs mt-2 flex justify-start md:justify-end items-center space-x-2">
+                                    {timeSyncStatus === 'synced' ? (
+                                        <span className="text-emerald-700 font-bold bg-emerald-100 px-3 py-1 rounded-full shadow-sm border border-emerald-200">🕒 Сверено с интернет</span>
+                                    ) : timeSyncStatus === 'syncing' ? (
+                                        <span className="text-blue-500 font-bold">🕒 Сверяване...</span>
+                                    ) : (
+                                        <span className="text-slate-600 font-bold bg-slate-200 px-3 py-1 rounded-full shadow-sm">🕒 Локално време</span>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+
+                        {renderStatusBox()}
+
+                        {activeSlots.length > 0 && !isWeekend && (
+                            <div className="mt-6 flex-1">
+                                <h4 className="text-2xl md:text-3xl font-black text-slate-700 mb-6 ml-2 uppercase tracking-widest opacity-80 border-b-4 border-slate-200 pb-2">
+                                    График за деня <span className="text-blue-600">({todayStr})</span>
+                                </h4>
+                                <div className="space-y-4">
+                                    {activeSlots.map(slot => {
+                                        const classData = currentSchedule[slot.id];
+                                        const isPast = currentMins > slot.end;
+                                        const isCurrent = currentMins >= slot.start && currentMins <= slot.end;
+
+                                        let teacherText = "";
+                                        if (classData.teacher) {
+                                            teacherText = userType === 'student' ? `при ${formatTeacherName(TEACHERS[classData.teacher])}` : `с ${classData.isWith}`;
+                                        }
+
+                                        // НОВ ДИЗАЙН: По-компактни карти
+                                        return (
+                                            <div key={slot.id} className={`relative overflow-hidden flex flex-col lg:flex-row lg:items-center p-5 lg:p-0 rounded-[1.5rem] transition-all shadow-sm border border-slate-100 ${isPast ? 'bg-slate-200 opacity-60 grayscale' : isCurrent ? 'bg-white shadow-xl ring-4 ring-blue-500 transform scale-[1.01] z-10' : 'bg-white hover:shadow-md'}`}>
+                                                
+                                                {/* Цветна лента отляво */}
+                                                <div className={`absolute left-0 top-0 bottom-0 w-3 ${isPast ? 'bg-slate-400' : isCurrent ? 'bg-blue-600' : 'bg-slate-300'}`}></div>
+                                                
+                                                <div className="flex flex-col lg:flex-row lg:w-full lg:items-center pl-5 lg:pl-8 lg:pr-5 py-1 lg:py-4">
+                                                    
+                                                    {/* ВРЕМЕ И ЧАС (Отляво на десктоп) */}
+                                                    <div className="flex flex-col items-start lg:w-1/4 mb-3 lg:mb-0 lg:pr-4 shrink-0">
+                                                        <span className={`inline-block px-3 py-1 rounded-lg text-base md:text-lg font-bold shadow-sm w-max mb-2 ${isCurrent ? 'bg-blue-600 text-white' : 'bg-slate-100 border border-slate-200 text-slate-700'}`}>
+                                                            {getOrdinal(slot.id)} час
+                                                        </span>
+                                                        <span className="flex items-center text-base md:text-lg font-bold text-slate-500 bg-slate-50 px-3 py-1 rounded-lg w-max border border-slate-100">
+                                                            <Icons.Clock /> {formatTimeDisplay(slot.start)} - {formatTimeDisplay(slot.end)}
+                                                        </span>
+                                                    </div>
+
+                                                    {/* ПРЕДМЕТ (Среда на десктоп) */}
+                                                    <div className="lg:flex-1 lg:border-l-4 lg:border-slate-100 lg:px-6 mb-3 lg:mb-0 flex flex-col justify-center min-h-[4rem]">
+                                                        <h5 className={`text-2xl md:text-3xl font-black leading-tight tracking-tight ${isCurrent ? 'text-blue-900' : 'text-slate-800'}`}>
+                                                            {classData.subject}
+                                                        </h5>
+                                                    </div>
+
+                                                    {/* ПРЕПОДАВАТЕЛ / ПАРАЛЕЛКА СЪС СНИМКА (Отдясно на десктоп) */}
+                                                    <div className="lg:w-[40%] flex items-center lg:justify-end mt-2 lg:mt-0 shrink-0">
+                                                        {teacherText && (
+                                                            <div className={`flex items-center text-lg md:text-2xl font-extrabold ${isCurrent ? 'text-blue-800' : 'text-slate-600'} bg-slate-50 lg:bg-transparent px-4 py-3 lg:p-0 rounded-xl w-full lg:w-auto border border-slate-100 lg:border-none`}>
+                                                                {userType === 'student' && classData.teacher ? (
+                                                                    <TeacherAvatar teacherId={classData.teacher} sizeClass="w-14 h-14 lg:w-20 lg:h-20 mr-3 md:mr-4" />
+                                                                ) : (
+                                                                    <Icons.User />
+                                                                )}
+                                                                <span className="text-left lg:text-right w-full leading-tight">{teacherText}</span>
+                                                            </div>
+                                                        )}
+                                                    </div>
+
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                );
+            };
+
+            return (
+                <div className="relative flex-1 flex flex-col h-full">
+                    <div className="flex-1 flex flex-col w-full">
+                        {view === 'home' && renderHome()}
+                        {(view === 'select_student' || view === 'select_teacher') && renderSelector(view)}
+                        {view === 'dashboard' && renderDashboard()}
+                    </div>
+
+                    {/* Footer - ЦСОП */}
+                    <div className="mt-auto pt-10 pb-6 text-center text-slate-500 w-full bg-slate-100/50">
+                        <div className="font-black text-lg mb-1 text-slate-600 uppercase tracking-widest">
+                            Седмично разписание за II срок
+                        </div>
+                        <div className="font-bold text-base mb-4 opacity-80">
+                            2025/2026 учебна година
+                        </div>
+                        <div className="font-bold text-xs tracking-widest uppercase opacity-60">
+                            ЦСОП "Леда Милева" &copy; {new Date().getFullYear()} Всички права запазени.
+                        </div>
+                    </div>
+
+                    {/* ПАНЕЛ ЗА ТЕСТВАНЕ (позволява превъртане на времето) */}
+                    <div className="fixed bottom-4 right-4 bg-white/95 backdrop-blur-xl p-4 rounded-2xl shadow-xl border border-slate-200 z-50 text-sm">
+                        <label className="flex items-center space-x-3 text-slate-800 font-bold cursor-pointer">
+                            <input type="checkbox" checked={testTimeMode} onChange={e => setTestTimeMode(e.target.checked)} className="w-5 h-5 text-blue-600 rounded" />
+                            <span className="text-lg">Тест панел</span>
+                        </label>
+                        {testTimeMode && (
+                            <div className="mt-3">
+                                <input 
+                                    type="time" 
+                                    value={mockTime} 
+                                    onChange={e => setMockTime(e.target.value)} 
+                                    className="border-2 border-slate-200 rounded-xl px-3 py-2 w-full text-xl font-black focus:outline-none focus:border-blue-500 bg-slate-50" 
+                                />
+                                <div className="text-xs text-slate-500 mt-2 font-medium leading-tight">При уикенд се симулира понеделник.</div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
