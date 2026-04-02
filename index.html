@@ -10,6 +10,8 @@
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <!-- Зареждане на Tailwind CSS за стилизация -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Зареждане на SheetJS за експорт към Excel -->
+    <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
     <style>
         body { font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
         .fade-in { animation: fadeIn 0.4s ease-out forwards; }
@@ -18,9 +20,8 @@
             to { opacity: 1; transform: translateY(0); }
         }
         select { background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e"); background-position: right 1.5rem center; background-repeat: no-repeat; background-size: 2em 2em; padding-right: 4rem; -webkit-appearance: none; -moz-appearance: none; appearance: none; }
-        /* Персонализиран скролбар за по-добър вид */
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 10px; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
         ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
     </style>
@@ -52,12 +53,19 @@
             "1": "Калинка Илиева", "2": "Галя Ненчева", "3": "Петринка Нанова",
             "4": "Цветанка Брайкова", "5": "Огнян Йорданов", "6": "Атанас Атанасов",
             "7": "Цветанка Михайлова", "8": "Петя Миланова", "9": "Тони Иванов",
-            "10": "Валентин Кръстев", "11": "Таня Петкова", "12": "Габриела Мандалева",
+            "10": "Валентин Кръстев (Рехабилитатор)", "11": "Таня Петкова", "12": "Габриела Мандалева",
             "13": "Гергана Ненова",
-            "ПСР1": "Милена Рачовска", 
-            "ПСР2": "Любомира Любенова",
-            "РКН": "Весела Стоянова", 
-            "ЕРГО": "Катина Василева"
+            "ПСР1": "Милена Рачовска (Психолог)", 
+            "ПСР2": "Любомира Любенова (Психолог)",
+            "РКН": "Весела Стоянова (Логопед)", 
+            "ЕРГО": "Катина Василева (Ерготерапия)",
+            "Възп1": "Цветодарка Цветанова (Възпитател)",
+            "Възп2": "Йорданка Трифонова (Възпитател)",
+            "Възп3": "Венера Илиева (Възпитател)",
+            "Възп4": "Йордан Цеков (Възпитател)",
+            "Възп5": "Любомир Цветков (Възпитател)",
+            "Възп6": "Емил Димитров (Възпитател)",
+            "РП": "Татяна Георгиева (Ресурсен учител)"
         };
 
         const FULL_SCHEDULE = {
@@ -154,28 +162,341 @@
             }
         };
 
-        // Логика за генериране на графика на учителите
+        // --- ИНДИВИДУАЛНИ (СЛЕДОБЕДНИ И ДР.) ГРАФИЦИ ЗА ПЕРСОНАЛ ---
+        // Тук можете лесно да добавяте и редактирате групите на терапевтите и възпитателите във формат HH:MM
+        const THERAPISTS_EXTRA_SCHEDULE = {
+            "ПСР1": {
+                "сряда": [
+                    { start: "11:20", end: "11:55", subject: "Групова работа - Психолог", group: "Група 2" },
+                    { start: "12:30", end: "13:00", subject: "Групова работа - Психолог", group: "Група 3" }
+                ],
+                "четвъртък": [
+                    { start: "11:20", end: "11:55", subject: "Групова работа - Психолог", group: "Група 3" },
+                    { start: "12:30", end: "13:00", subject: "Групова работа - Психолог", group: "Група 1" }
+                ]
+            },
+            "РП": {
+                "понеделник": [
+                    { start: "09:30", end: "10:00", subject: "Ресурсно подпомагане", group: "Група 1" },
+                    { start: "10:00", end: "10:30", subject: "Ресурсно подпомагане", group: "Група 2" },
+                    { start: "10:30", end: "11:00", subject: "Ресурсно подпомагане", group: "Група 6" },
+                    { start: "11:00", end: "11:30", subject: "Ресурсно подпомагане", group: "Група 3" },
+                    { start: "11:30", end: "12:00", subject: "Други дейности", group: "Група 5" },
+                    { start: "12:30", end: "13:30", subject: "Организиран отдих", group: "ДЦО" },
+                    { start: "14:00", end: "14:30", subject: "Самоподготовка", group: "ДЦО" },
+                    { start: "15:00", end: "15:30", subject: "Самоподготовка", group: "ДЦО" },
+                    { start: "16:00", end: "17:00", subject: "Занимания по интереси", group: "ДЦО" }
+                ],
+                "вторник": [
+                    { start: "09:30", end: "10:00", subject: "Ресурсно подпомагане", group: "Група 1" },
+                    { start: "10:00", end: "10:30", subject: "Ресурсно подпомагане", group: "Група 6" },
+                    { start: "10:30", end: "11:00", subject: "Ресурсно подпомагане", group: "Група 2" },
+                    { start: "11:00", end: "11:30", subject: "Ресурсно подпомагане", group: "Група 3" },
+                    { start: "11:30", end: "12:00", subject: "Други дейности", group: "Група 5" },
+                    { start: "12:30", end: "13:30", subject: "Организиран отдих", group: "ДЦО" },
+                    { start: "14:00", end: "14:30", subject: "Самоподготовка", group: "ДЦО" },
+                    { start: "15:00", end: "15:30", subject: "Самоподготовка", group: "ДЦО" },
+                    { start: "16:00", end: "17:00", subject: "Занимания по интереси", group: "ДЦО" }
+                ],
+                "сряда": [
+                    { start: "09:30", end: "10:00", subject: "Ресурсно подпомагане", group: "Група 7" },
+                    { start: "10:00", end: "10:30", subject: "Ресурсно подпомагане", group: "Група 2" },
+                    { start: "10:30", end: "11:00", subject: "Ресурсно подпомагане", group: "Група 2" },
+                    { start: "11:00", end: "11:30", subject: "Ресурсно подпомагане", group: "Група 4" },
+                    { start: "11:30", end: "12:00", subject: "Други дейности", group: "Група 5" },
+                    { start: "12:30", end: "13:30", subject: "Организиран отдих", group: "ДЦО" },
+                    { start: "14:00", end: "14:30", subject: "Самоподготовка", group: "ДЦО" },
+                    { start: "15:00", end: "15:30", subject: "Самоподготовка", group: "ДЦО" },
+                    { start: "16:00", end: "17:00", subject: "Занимания по интереси", group: "ДЦО" }
+                ],
+                "четвъртък": [
+                    { start: "09:30", end: "10:00", subject: "Ресурсно подпомагане", group: "Група 2" },
+                    { start: "10:00", end: "10:30", subject: "Други дейности", group: "Група 5" },
+                    { start: "10:30", end: "11:00", subject: "Ресурсно подпомагане", group: "Група 4" },
+                    { start: "11:00", end: "11:30", subject: "Ресурсно подпомагане", group: "Група 4" },
+                    { start: "11:30", end: "12:00", subject: "Други дейности", group: "Група 5" },
+                    { start: "12:30", end: "13:30", subject: "Организиран отдих", group: "ДЦО" },
+                    { start: "14:00", end: "14:30", subject: "Самоподготовка", group: "ДЦО" },
+                    { start: "15:00", end: "15:30", subject: "Самоподготовка", group: "ДЦО" },
+                    { start: "16:00", end: "17:00", subject: "Занимания по интереси", group: "ДЦО" }
+                ],
+                "петък": [
+                    { start: "12:30", end: "13:30", subject: "Организиран отдих", group: "ДЦО" },
+                    { start: "14:00", end: "14:30", subject: "Самоподготовка", group: "ДЦО" },
+                    { start: "15:00", end: "15:30", subject: "Самоподготовка", group: "ДЦО" },
+                    { start: "16:00", end: "17:00", subject: "Занимания по интереси", group: "ДЦО" }
+                ]
+            },
+            "10": { 
+                "понеделник": [
+                    { start: "12:30", end: "12:50", subject: "Рехабилитация", group: "Група РФУ-1" },
+                    { start: "13:00", end: "13:20", subject: "Рехабилитация", group: "Група РФУ-2" },
+                    { start: "13:30", end: "13:50", subject: "Рехабилитация", group: "Група РФУ-3" }
+                ],
+                "вторник": [
+                    { start: "12:30", end: "12:50", subject: "Рехабилитация", group: "Група РФУ-4" },
+                    { start: "13:00", end: "13:20", subject: "Рехабилитация", group: "Група РФУ-2" },
+                    { start: "13:30", end: "13:50", subject: "Рехабилитация", group: "Група РФУ-5" }
+                ],
+                "сряда": [
+                    { start: "12:30", end: "12:50", subject: "Рехабилитация", group: "Група РФУ-1" },
+                    { start: "13:00", end: "13:20", subject: "Рехабилитация", group: "Група РФУ-6" },
+                    { start: "13:30", end: "13:50", subject: "Рехабилитация", group: "Група РФУ-3" }
+                ],
+                "четвъртък": [
+                    { start: "12:30", end: "12:50", subject: "Рехабилитация", group: "Група РФУ-4" },
+                    { start: "13:00", end: "13:20", subject: "Рехабилитация", group: "Група РФУ-5" },
+                    { start: "13:30", end: "13:50", subject: "Рехабилитация", group: "Група РФУ-3" }
+                ],
+                "петък": [
+                    { start: "13:00", end: "13:45", subject: "Консултиране", group: "Консултации" }
+                ]
+            },
+            "РКН": { 
+                "понеделник": [
+                    { start: "09:00", end: "09:35", subject: "Логопедични Занятия", group: "Група 8" },
+                    { start: "08:45", end: "09:20", subject: "Логопедични Занятия", group: "Група 10" },
+                    { start: "11:20", end: "11:55", subject: "Логопедични Занятия", group: "Група 13" },
+                    { start: "11:55", end: "12:25", subject: "Логопедични Занятия", group: "Група 7" },
+                    { start: "12:30", end: "13:00", subject: "Логопедични Занятия", group: "Група 3" },
+                    { start: "13:00", end: "13:30", subject: "Логопедични Занятия", group: "Група 1" }
+                ],
+                "вторник": [
+                    { start: "11:20", end: "11:55", subject: "Логопедични Занятия", group: "Група 11" },
+                    { start: "11:55", end: "12:25", subject: "Логопедични Занятия", group: "Група 7" }
+                ],
+                "сряда": [
+                    { start: "09:00", end: "09:35", subject: "Логопедични Занятия", group: "Група 9" },
+                    { start: "09:30", end: "10:05", subject: "Логопедични Занятия", group: "Група 11" },
+                    { start: "10:35", end: "11:10", subject: "Логопедични Занятия", group: "Група 12" },
+                    { start: "11:20", end: "11:55", subject: "Логопедични Занятия", group: "Група 8" },
+                    { start: "11:55", end: "12:30", subject: "Логопедични Занятия", group: "Група 15" },
+                    { start: "13:00", end: "14:00", subject: "Логопедични Занятия", group: "Група 1" }
+                ],
+                "четвъртък": [
+                    { start: "09:00", end: "09:35", subject: "Логопедични Занятия", group: "Група 9" },
+                    { start: "11:20", end: "11:55", subject: "Логопедични Занятия", group: "Група 10" },
+                    { start: "12:30", end: "13:00", subject: "Логопедични Занятия", group: "Група 5" },
+                    { start: "13:00", end: "13:30", subject: "Логопедични Занятия", group: "Група 6" },
+                    { start: "13:30", end: "14:00", subject: "Логопедични Занятия", group: "Група 4" }
+                ],
+                "петък": [
+                    { start: "11:20", end: "11:55", subject: "Логопедични Занятия", group: "Група 13" },
+                    { start: "11:55", end: "12:25", subject: "Логопедични Занятия", group: "Група 12" },
+                    { start: "13:50", end: "14:30", subject: "Логопедични Занятия", group: "Група 14" },
+                    { start: "14:30", end: "15:10", subject: "Логопедични Занятия", group: "Група 2" }
+                ]
+            },
+            "ЕРГО": {
+                "понеделник": [
+                    { start: "08:00", end: "08:35", subject: "Ерготерапия", group: "Група 12" },
+                    { start: "08:45", end: "09:20", subject: "Диагностика", group: "Група 13" },
+                    { start: "09:30", end: "10:05", subject: "Ерготерапия", group: "Група 11" },
+                    { start: "10:05", end: "10:25", subject: "Екипна работа", group: "Конс - 26" },
+                    { start: "10:35", end: "11:10", subject: "Диагностика", group: "Група 13" },
+                    { start: "11:20", end: "11:55", subject: "Ерготерапия", group: "Група 7" },
+                    { start: "11:55", end: "12:30", subject: "Ерготерапия", group: "Група 6" },
+                    { start: "12:30", end: "13:00", subject: "Ерготерапия", group: "Група 25" },
+                    { start: "13:30", end: "14:00", subject: "Ерготерапия", group: "Група 27" },
+                    { start: "14:00", end: "14:30", subject: "Ерготерапия", group: "Група 17" },
+                    { start: "14:30", end: "15:00", subject: "Ерготерапия", group: "Група 16" }
+                ],
+                "вторник": [
+                    { start: "08:00", end: "08:35", subject: "Диагностика", group: "Група 13" },
+                    { start: "08:35", end: "09:20", subject: "Диагностика", group: "Група 13" },
+                    { start: "09:20", end: "10:05", subject: "Диагностика", group: "Група 13" },
+                    { start: "10:05", end: "10:25", subject: "Екипна работа", group: "Конс - 26" },
+                    { start: "10:35", end: "11:10", subject: "Ерготерапия", group: "Група 12" },
+                    { start: "11:20", end: "11:55", subject: "Ерготерапия", group: "Група 10" },
+                    { start: "11:55", end: "12:30", subject: "Ерготерапия", group: "Група 5" },
+                    { start: "12:30", end: "13:00", subject: "Ерготерапия", group: "Група 21" },
+                    { start: "13:30", end: "14:00", subject: "Ерготерапия", group: "Група 23" },
+                    { start: "14:00", end: "14:30", subject: "Ерготерапия", group: "Група 14" },
+                    { start: "14:30", end: "15:00", subject: "Ерготерапия", group: "Група 19" }
+                ],
+                "сряда": [
+                    { start: "08:00", end: "08:35", subject: "Ерготерапия", group: "Група 12" },
+                    { start: "08:35", end: "09:20", subject: "Диагностика", group: "Група 13" },
+                    { start: "09:20", end: "10:05", subject: "Ерготерапия", group: "Група 4" },
+                    { start: "10:05", end: "10:25", subject: "Екипна работа", group: "Конс - 26" },
+                    { start: "10:35", end: "11:10", subject: "Ерготерапия", group: "Група 11" },
+                    { start: "11:20", end: "11:55", subject: "Ерготерапия", group: "Група 9" },
+                    { start: "11:55", end: "12:30", subject: "Ерготерапия", group: "Група 2" },
+                    { start: "12:30", end: "13:00", subject: "Ерготерапия", group: "Група 15" },
+                    { start: "13:30", end: "14:00", subject: "Ерготерапия", group: "Група 23" },
+                    { start: "14:00", end: "14:30", subject: "Ерготерапия", group: "Група 27" },
+                    { start: "14:30", end: "15:00", subject: "Ерготерапия", group: "Група 22" }
+                ],
+                "четвъртък": [
+                    { start: "08:00", end: "08:35", subject: "Ерготерапия", group: "Група 4" },
+                    { start: "08:35", end: "09:20", subject: "Диагностика", group: "Група 13" },
+                    { start: "09:30", end: "10:05", subject: "Ерготерапия", group: "Група 12" },
+                    { start: "10:05", end: "10:25", subject: "Екипна работа", group: "Конс - 26" },
+                    { start: "10:35", end: "11:10", subject: "Ерготерапия", group: "Група 10" },
+                    { start: "11:20", end: "11:55", subject: "Ерготерапия", group: "Група 11" },
+                    { start: "11:55", end: "12:30", subject: "Ерготерапия", group: "Група 1" },
+                    { start: "12:30", end: "13:00", subject: "Ерготерапия", group: "Група 24" },
+                    { start: "13:30", end: "14:00", subject: "Ерготерапия", group: "Група 29" },
+                    { start: "14:30", end: "15:00", subject: "Ерготерапия", group: "Група 20" }
+                ],
+                "петък": [
+                    { start: "08:00", end: "08:35", subject: "Ерготерапия", group: "Група 8" },
+                    { start: "08:35", end: "09:20", subject: "Ерготерапия", group: "Група 3" },
+                    { start: "09:30", end: "10:05", subject: "Ерготерапия", group: "Група 9" },
+                    { start: "10:05", end: "10:25", subject: "Екипна работа", group: "Конс - 26" },
+                    { start: "10:35", end: "11:10", subject: "Ерготерапия", group: "Група 12" },
+                    { start: "11:20", end: "11:55", subject: "Ерготерапия", group: "Група 11" },
+                    { start: "11:55", end: "12:30", subject: "Ерготерапия", group: "Група 1" },
+                    { start: "12:30", end: "13:00", subject: "Ерготерапия", group: "Група 26" },
+                    { start: "13:30", end: "14:00", subject: "Ерготерапия", group: "Група 26" },
+                    { start: "14:30", end: "15:00", subject: "Ерготерапия", group: "Група 18" }
+                ]
+            },
+            "ПСР2": { 
+                "понеделник": [
+                    { start: "07:20", end: "08:05", subject: "Работа с родители", group: "Група 28" },
+                    { start: "08:45", end: "10:05", subject: "ЕПЛР", group: "Конс - 26" },
+                    { start: "10:35", end: "11:10", subject: "Групова работа", group: "Група 11" },
+                    { start: "11:10", end: "11:20", subject: "Екипна работа", group: "Конс - 25" },
+                    { start: "11:20", end: "11:55", subject: "Групова работа", group: "Група 10" },
+                    { start: "11:55", end: "12:20", subject: "Групова работа", group: "Група 3" },
+                    { start: "12:30", end: "13:00", subject: "Групова работа", group: "Група 1" },
+                    { start: "13:30", end: "14:00", subject: "Групова работа", group: "Група 19" },
+                    { start: "14:00", end: "14:30", subject: "Индивидуална работа", group: "Група 23" }
+                ],
+                "вторник": [
+                    { start: "07:20", end: "08:00", subject: "Екипна работа", group: "Конс - 25" },
+                    { start: "08:00", end: "08:35", subject: "Групова работа", group: "Група 7" },
+                    { start: "08:35", end: "08:45", subject: "Диагностика", group: "Група 29" },
+                    { start: "08:45", end: "09:20", subject: "Групова работа", group: "Група 3" },
+                    { start: "09:20", end: "09:30", subject: "Екипна работа", group: "Конс - 25" },
+                    { start: "09:30", end: "10:05", subject: "Групова работа", group: "Група 11" },
+                    { start: "10:35", end: "11:10", subject: "Групова работа", group: "Група 10" },
+                    { start: "11:10", end: "11:20", subject: "Екипна работа", group: "Конс - 25" },
+                    { start: "11:20", end: "11:55", subject: "Групова работа", group: "Група 4" },
+                    { start: "11:55", end: "12:20", subject: "Групова работа", group: "Група 7" },
+                    { start: "12:30", end: "13:00", subject: "Групова работа", group: "Група 3" },
+                    { start: "13:30", end: "14:00", subject: "Групова работа", group: "Група 1" },
+                    { start: "14:00", end: "14:30", subject: "Групова работа", group: "Група 12" }
+                ],
+                "сряда": [
+                    { start: "07:20", end: "08:00", subject: "Работа с родители", group: "Група 28" },
+                    { start: "08:00", end: "08:35", subject: "Групова работа", group: "Група 2" },
+                    { start: "08:35", end: "08:45", subject: "Екипна работа", group: "Конс - 25" },
+                    { start: "08:45", end: "09:20", subject: "Групова работа", group: "Група 11" },
+                    { start: "09:20", end: "09:30", subject: "Наблюдение", group: "Конс - 24" },
+                    { start: "09:30", end: "10:05", subject: "Групова работа", group: "Група 3" },
+                    { start: "10:25", end: "10:50", subject: "Индивидуална работа", group: "Група 27" },
+                    { start: "10:35", end: "11:10", subject: "Групова работа", group: "Група 5" },
+                    { start: "10:50", end: "11:10", subject: "Индивидуална работа", group: "Група 30" },
+                    { start: "11:10", end: "11:20", subject: "Диагностика", group: "Група 29" },
+                    { start: "11:20", end: "11:55", subject: "Групова работа", group: "Група 9" },
+                    { start: "11:55", end: "12:20", subject: "Групова работа", group: "Група 6" },
+                    { start: "12:20", end: "12:50", subject: "Наблюдение", group: "Конс - 24" },
+                    { start: "12:30", end: "13:00", subject: "Групова работа", group: "Група 1" },
+                    { start: "13:00", end: "13:30", subject: "Индивидуална работа", group: "Група 17" },
+                    { start: "13:30", end: "14:00", subject: "Индивидуална работа", group: "Група 23" }
+                ],
+                "четвъртък": [
+                    { start: "07:20", end: "08:00", subject: "ЕПЛР", group: "Конс - 26" },
+                    { start: "08:00", end: "08:35", subject: "Групова работа", group: "Група 11" },
+                    { start: "08:35", end: "08:45", subject: "Диагностика", group: "Група 29" },
+                    { start: "08:45", end: "09:20", subject: "Групова работа", group: "Група 2" },
+                    { start: "09:30", end: "10:05", subject: "Групова работа", group: "Група 10" },
+                    { start: "11:10", end: "11:20", subject: "Диагностика", group: "Група 29" },
+                    { start: "11:20", end: "11:50", subject: "Групова работа", group: "Група 6" },
+                    { start: "11:50", end: "12:00", subject: "Работа с родители", group: "Група 28" },
+                    { start: "12:00", end: "12:30", subject: "Групова работа", group: "Група 9" },
+                    { start: "12:30", end: "13:00", subject: "Индивидуална работа", group: "Група 20" },
+                    { start: "13:00", end: "13:30", subject: "Индивидуална работа", group: "Група 18" },
+                    { start: "13:30", end: "14:00", subject: "Индивидуална работа", group: "Група 15" }
+                ],
+                "петък": [
+                    { start: "08:00", end: "08:35", subject: "Групова работа", group: "Група 3" },
+                    { start: "08:35", end: "09:20", subject: "Диагностика", group: "Група 29" },
+                    { start: "09:30", end: "10:05", subject: "Групова работа", group: "Група 11" },
+                    { start: "10:05", end: "10:35", subject: "Индивидуална работа", group: "Група 16" },
+                    { start: "10:35", end: "11:10", subject: "Групова работа", group: "Група 8" },
+                    { start: "11:10", end: "11:20", subject: "Наблюдение", group: "Конс - 24" },
+                    { start: "11:20", end: "11:55", subject: "Групова работа", group: "Група 11" },
+                    { start: "11:55", end: "12:20", subject: "Индивидуална работа", group: "Група 13" },
+                    { start: "12:50", end: "13:20", subject: "Групова работа", group: "Група 5" },
+                    { start: "13:50", end: "14:10", subject: "Индивидуална работа", group: "Група 21" },
+                    { start: "14:10", end: "14:30", subject: "Индивидуална работа", group: "Група 14" },
+                    { start: "14:30", end: "15:10", subject: "Групова работа", group: "Група 22" }
+                ]
+            }
+        };
+
+        // --- ЛОГИКА ЗА ИНДИВИДУАЛНИТЕ ГРАФИЦИ НА ПЕРСОНАЛА ---
         function getTeacherSchedule(teacherId) {
             let tSched = { "понеделник": {}, "вторник": {}, "сряда": {}, "четвъртък": {}, "петък": {} };
+            
+            // 1. Стандартни часове от разписанието
             Object.keys(FULL_SCHEDULE).forEach(paralelkaName => {
                 let pData = FULL_SCHEDULE[paralelkaName];
                 Object.keys(pData).forEach(day => {
                     Object.keys(pData[day]).forEach(hour => {
-                        // Ок няма прикрепен учител (""), така че не влиза в графика
                         if (pData[day][hour].teacher === teacherId && teacherId !== "") {
-                            tSched[day][hour] = {
-                                subject: pData[day][hour].subject,
-                                isWith: paralelkaName,
+                            let subject = pData[day][hour].subject;
+                            let isWith = paralelkaName;
+                            tSched[day][hour] = { subject, isWith, teacher: teacherId };
+                        }
+                    });
+                });
+            });
+
+            // 2. Следобедни блокове за Възпитатели
+            const educatorGroups = {
+                "Възп1": "сборна - 1 общ.",
+                "Възп2": "сборна - 2 общ.",
+                "Възп3": "сборна - 3 общ.",
+                "Възп4": "сборна - 4 общ.",
+                "Възп5": "сборна - 5 общ.",
+                "Възп6": "сборна - 6 общ."
+            };
+
+            if (educatorGroups[teacherId]) {
+                const groupName = educatorGroups[teacherId];
+                const days = ["понеделник", "вторник", "сряда", "четвъртък", "петък"];
+                days.forEach(day => {
+                    tSched[day]["e1"] = { subject: "Организиран отдих и физическа активност", isWith: groupName, teacher: teacherId };
+                    tSched[day]["e2"] = { subject: "Занимания по интереси", isWith: groupName, teacher: teacherId };
+                    tSched[day]["e3"] = { subject: "Самоподготовка", isWith: groupName, teacher: teacherId };
+                    tSched[day]["e4"] = { subject: "Занимания по интереси", isWith: groupName, teacher: teacherId };
+                    tSched[day]["e5"] = { subject: "Самоподготовка", isWith: groupName, teacher: teacherId };
+                    tSched[day]["e6"] = { subject: "Самоподготовка", isWith: groupName, teacher: teacherId };
+                    tSched[day]["e7"] = { subject: "Занимания по интереси", isWith: groupName, teacher: teacherId };
+                    tSched[day]["e8"] = { subject: "Занимания по интереси", isWith: groupName, teacher: teacherId };
+                });
+            }
+
+            // 3. Индивидуални графици от THERAPISTS_EXTRA_SCHEDULE (за ПСР, ЕРГО, РКН, 10, РП)
+            if (THERAPISTS_EXTRA_SCHEDULE[teacherId]) {
+                Object.keys(THERAPISTS_EXTRA_SCHEDULE[teacherId]).forEach(day => {
+                    THERAPISTS_EXTRA_SCHEDULE[teacherId][day].forEach(slot => {
+                        const sTime = parseTime(slot.start);
+                        const eTime = parseTime(slot.end);
+                        
+                        // Намираме правилния ID на слота за това време
+                        const activeSlotsForTeacher = getActiveSlots(teacherId);
+                        const matchedSlot = activeSlotsForTeacher.find(s => s.start === sTime && s.end === eTime);
+                        
+                        if (matchedSlot) {
+                            tSched[day][matchedSlot.id] = {
+                                subject: slot.subject,
+                                isWith: slot.group,
                                 teacher: teacherId
                             };
                         }
                     });
                 });
-            });
+            }
+
             return tSched;
         }
 
-        // --- ЛОГИКА ЗА ВРЕМЕТО ---
+        // --- ЛОГИКА ЗА ВРЕМЕТО И ЗВЪНЕЦА ---
 
         const parseTime = (timeStr) => {
             const [h, m] = timeStr.split(':').map(Number);
@@ -188,16 +509,60 @@
             return `${h}:${m}`;
         };
 
-        // ОБНОВЕН График на звънеца спрямо снимката от ЦСОП (часове по 35 мин)
-        const SLOTS = [
-            { id: 1, start: parseTime('08:00'), end: parseTime('08:35') },
-            { id: 2, start: parseTime('08:45'), end: parseTime('09:20') },
-            { id: 3, start: parseTime('09:30'), end: parseTime('10:05') }, // Голямо междучасие след 3-ти час 30 мин
-            { id: 4, start: parseTime('10:35'), end: parseTime('11:10') },
-            { id: 5, start: parseTime('11:20'), end: parseTime('11:55') },
-            { id: 6, start: parseTime('12:05'), end: parseTime('12:40') },
-            { id: 7, start: parseTime('12:50'), end: parseTime('13:25') } // Добавен по същата логика за паралелките със 7ми час
-        ];
+        // Динамични слотове според профила на потребителя
+        const getActiveSlots = (teacherId) => {
+            const baseSlots = [
+                { id: "1", start: parseTime('08:00'), end: parseTime('08:35') },
+                { id: "2", start: parseTime('08:45'), end: parseTime('09:20') },
+                { id: "3", start: parseTime('09:30'), end: parseTime('10:05') },
+                { id: "4", start: parseTime('10:35'), end: parseTime('11:10') },
+                { id: "5", start: parseTime('11:20'), end: parseTime('11:55') },
+                { id: "6", start: parseTime('12:05'), end: parseTime('12:40') },
+                { id: "7", start: parseTime('12:50'), end: parseTime('13:25') }
+            ];
+            
+            if (String(teacherId).startsWith("Възп")) {
+                return [
+                    { id: "e1", start: parseTime('12:30'), end: parseTime('14:30') },
+                    { id: "e2", start: parseTime('14:30'), end: parseTime('15:00') },
+                    { id: "e3", start: parseTime('15:00'), end: parseTime('15:35') },
+                    { id: "e4", start: parseTime('15:35'), end: parseTime('16:00') },
+                    { id: "e5", start: parseTime('16:00'), end: parseTime('16:35') },
+                    { id: "e6", start: parseTime('16:40'), end: parseTime('17:15') },
+                    { id: "e7", start: parseTime('17:15'), end: parseTime('17:35') },
+                    { id: "e8", start: parseTime('17:35'), end: parseTime('18:00') }
+                ];
+            }
+
+            let allSlots = [...baseSlots];
+
+            // Ако учителят има специални извънредни слотове (терапевти)
+            if (THERAPISTS_EXTRA_SCHEDULE[teacherId]) {
+                const extraSlotsMap = new Map();
+                Object.values(THERAPISTS_EXTRA_SCHEDULE[teacherId]).forEach(dayArr => {
+                    dayArr.forEach(slot => {
+                        const sTime = parseTime(slot.start);
+                        const eTime = parseTime(slot.end);
+                        const slotId = `extra_${sTime}_${eTime}`;
+                        if (!extraSlotsMap.has(slotId)) {
+                            extraSlotsMap.set(slotId, { id: slotId, start: sTime, end: eTime });
+                        }
+                    });
+                });
+                
+                allSlots = [...allSlots, ...Array.from(extraSlotsMap.values())];
+            }
+
+            // Премахване на абсолютни дубликати (с едно и също начало и край)
+            const uniqueSlots = [];
+            allSlots.forEach(s => {
+                if (!uniqueSlots.find(u => u.start === s.start && u.end === s.end)) {
+                    uniqueSlots.push(s);
+                }
+            });
+
+            return uniqueSlots.sort((a, b) => a.start - b.start);
+        };
 
         // --- ФОРМАТИРАНЕ ---
 
@@ -211,41 +576,43 @@
             }
         };
 
-        const getOrdinal = (num) => {
-            const ordinals = { 1: "1-ви", 2: "2-ри", 3: "3-ти", 4: "4-ти", 5: "5-ти", 6: "6-ти", 7: "7-ми" };
-            return ordinals[num] || `${num}-ти`;
+        const getSlotLabel = (slotId) => {
+            const ordinals = { 1: "1-ви час", 2: "2-ри час", 3: "3-ти час", 4: "4-ти час", 5: "5-ти час", 6: "6-ти час", 7: "7-ми час" };
+            if (ordinals[slotId]) return ordinals[slotId];
+            if (String(slotId).startsWith('e')) return "Следобед";
+            if (String(slotId).startsWith('extra_')) return "Група"; // За терапевтите
+            return "Час";
         };
 
-        const getStatus = (todaySchedule, currentMins) => {
+        const getStatus = (todaySchedule, currentMins, userSlots) => {
             if (!todaySchedule || Object.keys(todaySchedule).length === 0) return { type: 'no_data' };
 
-            let currentSlot = SLOTS.find(s => currentMins >= s.start && currentMins <= s.end);
+            // Филтрираме само слотовете, в които реално има назначен час за деня
+            const activeUserSlots = userSlots.filter(s => todaySchedule[s.id]);
+            
+            if (activeUserSlots.length === 0) return { type: 'no_data' };
+
+            // Сортираме по време за всеки случай
+            activeUserSlots.sort((a, b) => a.start - b.start);
+
+            let currentSlot = activeUserSlots.find(s => currentMins >= s.start && currentMins < s.end);
             
             const findNextClass = (mins) => {
-                for (let s of SLOTS) {
-                    if (s.start > mins && todaySchedule[s.id]) {
-                        return { slot: s, data: todaySchedule[s.id] };
-                    }
-                }
+                let nextS = activeUserSlots.find(s => s.start > mins);
+                if (nextS) return { slot: nextS, data: todaySchedule[nextS.id] };
                 return null;
             };
 
             if (currentSlot) {
-                let classData = todaySchedule[currentSlot.id];
-                if (classData) {
-                    return { type: 'in_class', slot: currentSlot, data: classData, startedAgo: currentMins - currentSlot.start };
-                } else {
-                    let next = findNextClass(currentMins);
-                    return { type: 'free_period', nextClass: next };
-                }
+                return { type: 'in_class', slot: currentSlot, data: todaySchedule[currentSlot.id], startedAgo: currentMins - currentSlot.start };
             }
 
-            if (currentMins < SLOTS[0].start) {
+            if (currentMins < activeUserSlots[0].start) {
                 let next = findNextClass(currentMins);
                 return { type: 'before_school', nextClass: next };
             }
 
-            if (currentMins > SLOTS[SLOTS.length-1].end) {
+            if (currentMins >= activeUserSlots[activeUserSlots.length - 1].end) {
                 return { type: 'after_school' };
             }
 
@@ -257,6 +624,96 @@
             return { type: 'after_school' };
         };
 
+        // --- ЕКСПОРТ И ЛОГИКА ЗА ТАБЛИЦАТА ---
+        
+        const generateTableHTML = () => {
+            let html = '<table border="1" cellpadding="3" cellspacing="0" style="border-collapse: collapse; width: 100%; text-align: center; font-family: \'Times New Roman\', serif; font-size: 9pt;">';
+            
+            html += '<tr><td colspan="' + (PARALELKI.length + 2) + '" style="font-size: 11pt; font-weight: bold; text-align: center; padding: 10px;">Дневно разписание на образователния процес в ЦСОП "Леда Милева"<br>за II срок на учебната 2025/2026 година</td></tr>';
+            
+            html += '<tr style="background-color: #e2e8f0; font-weight: bold;">';
+            html += '<td style="width: 70px;">Ден</td><td style="width: 30px;">Час</td>';
+            PARALELKI.forEach(p => {
+                html += `<td>${p}</td>`;
+            });
+            html += '</tr>';
+
+            const daysArr = ["понеделник", "вторник", "сряда", "четвъртък", "петък"];
+            const hours = [1, 2, 3, 4, 5, 6, 7];
+
+            daysArr.forEach(day => {
+                hours.forEach((hour, index) => {
+                    html += '<tr>';
+                    if (index === 0) {
+                        html += `<td rowspan="7" style="font-weight: bold; vertical-align: middle;">${day.toUpperCase()}</td>`;
+                    }
+                    html += `<td style="font-weight: bold;">${hour}</td>`;
+
+                    PARALELKI.forEach(paralelka => {
+                        const classData = FULL_SCHEDULE[paralelka]?.[day]?.[hour];
+                        if (classData) {
+                            let tCode = classData.teacher || '';
+                            html += `<td>${classData.subject} <br> <strong>${tCode}</strong></td>`;
+                        } else {
+                            html += `<td></td>`;
+                        }
+                    });
+                    html += '</tr>';
+                });
+            });
+
+            html += '</table>';
+            
+            html += '<br><div style="font-size: 9pt; text-align: left; font-family: \'Times New Roman\', serif;">';
+            html += '<strong>Легенда преподаватели:</strong><br>';
+            // Подредени един под друг
+            let legendArr = Object.entries(TEACHERS)
+                .filter(([code]) => !code.startsWith('Възп') && code !== 'РП')
+                .map(([code, name]) => `<strong>${code}</strong> - ${name}`);
+            html += legendArr.join('<br>');
+            html += '</div>';
+
+            return html;
+        };
+
+        const handleExportWord = () => {
+            const html = generateTableHTML();
+            // Добавяне на CSS за Landscape
+            const header = `<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+            <head>
+                <meta charset='utf-8'>
+                <title>Разписание</title>
+                <style>
+                    @page WordSection1 { size: 841.9pt 595.3pt; mso-page-orientation: landscape; margin: 36.0pt; }
+                    div.WordSection1 { page: WordSection1; }
+                </style>
+            </head>
+            <body><div class="WordSection1">`;
+            const footer = "</div></body></html>";
+            const fullHtml = header + html + footer;
+            
+            const blob = new Blob(['\ufeff', fullHtml], { type: 'application/msword' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'Razpisanie_Leda_Mileva.doc';
+            link.click();
+        };
+
+        const handleExportExcel = () => {
+            try {
+                const html = generateTableHTML();
+                const div = document.createElement('div');
+                div.innerHTML = html;
+                const table = div.querySelector('table');
+                
+                const wb = XLSX.utils.table_to_book(table, {sheet: "Разписание"});
+                XLSX.writeFile(wb, 'Razpisanie_Leda_Mileva.xlsx');
+            } catch(e) {
+                console.error("Грешка при експортиране: ", e);
+            }
+        };
+
         // --- КОМПОНЕНТИ ---
 
         const Icons = {
@@ -264,22 +721,21 @@
             Teacher: () => <svg xmlns="http://www.w3.org/2000/svg" className="w-20 h-20 mb-4 text-emerald-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>,
             Back: () => <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>,
             Clock: () => <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>,
-            User: () => <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            User: () => <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>,
+            Word: () => <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>,
+            Excel: () => <svg xmlns="http://www.w3.org/2000/svg" className="w-6 h-6 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><line x1="3" x2="21" y1="9" y2="9"/><line x1="3" x2="21" y1="15" y2="15"/><line x1="9" x2="9" y1="9" y2="21"/><line x1="15" x2="15" y1="9" y2="21"/></svg>
         };
 
-        // --- КОМПОНЕНТ ЗА СНИМКА НА УЧИТЕЛ (С ПОДДРЪЖКА НА JPG, JPEG, PNG) ---
         const TeacherAvatar = ({ teacherId, sizeClass = "w-12 h-12" }) => {
             const [hasError, setHasError] = React.useState(false);
             const [extIndex, setExtIndex] = React.useState(0);
             const extensions = ['jpg', 'jpeg', 'png'];
 
-            // Рестартиране на статуса при смяна на учителя
             React.useEffect(() => {
                 setHasError(false);
                 setExtIndex(0);
             }, [teacherId]);
 
-            // Ако сме изчерпали всички формати или няма учител, показваме иконка
             if (!teacherId || hasError) {
                 return (
                     <div className={`${sizeClass} rounded-full bg-slate-200 flex items-center justify-center text-slate-400 shrink-0 border-4 border-white shadow-sm [&>svg]:w-1/2 [&>svg]:h-1/2 [&>svg]:mr-0`}>
@@ -288,7 +744,6 @@
                 );
             }
 
-            // Функция, която опитва следващия формат, ако текущият не бъде намерен
             const handleError = () => {
                 if (extIndex < extensions.length - 1) {
                     setExtIndex(prev => prev + 1);
@@ -309,8 +764,10 @@
 
         function App() {
             const [view, setView] = React.useState('home');
-            const [userType, setUserType] = React.useState(''); // 'student' or 'teacher'
+            const [userType, setUserType] = React.useState('');
             const [selectedId, setSelectedId] = React.useState('');
+            
+            const [scheduleViewMode, setScheduleViewMode] = React.useState('daily');
             
             const [currentTime, setCurrentTime] = React.useState(new Date());
             const [testTimeMode, setTestTimeMode] = React.useState(false);
@@ -363,6 +820,7 @@
             const goHome = () => {
                 setView('home');
                 setSelectedId('');
+                setScheduleViewMode('daily');
             };
 
             let dayOfWeek, currentMins;
@@ -395,25 +853,26 @@
             }
 
             const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
-            const dayNames = ["", "понеделник", "вторник", "сряда", "четвъртък", "петък", ""];
-            const todayStr = dayNames[dayOfWeek];
+            const daysArr = ["понеделник", "вторник", "сряда", "четвъртък", "петък"];
+            const todayStr = isWeekend ? "понеделник" : daysArr[dayOfWeek - 1]; 
 
-            let currentSchedule = {};
-            if (selectedId && !isWeekend) {
+            let fullWeekSchedule = {};
+            if (selectedId) {
                 if (userType === 'student') {
-                    currentSchedule = (FULL_SCHEDULE[selectedId] && FULL_SCHEDULE[selectedId][todayStr]) || {};
+                    fullWeekSchedule = FULL_SCHEDULE[selectedId] || {};
                 } else {
-                    const teacherFullSched = getTeacherSchedule(selectedId);
-                    currentSchedule = teacherFullSched[todayStr] || {};
+                    fullWeekSchedule = getTeacherSchedule(selectedId);
                 }
             }
-
-            const status = isWeekend ? { type: 'weekend' } : getStatus(currentSchedule, currentMins);
+            
+            const currentSchedule = fullWeekSchedule[todayStr] || {};
+            const userSlots = selectedId ? getActiveSlots(selectedId) : getActiveSlots("");
+            const status = isWeekend && !testTimeMode ? { type: 'weekend' } : getStatus(currentSchedule, currentMins, userSlots);
 
             const renderHome = () => (
                 <div className="flex flex-col items-center justify-center min-h-[80vh] px-4 fade-in mt-10 w-full max-w-4xl mx-auto">
                     <h1 className="text-3xl md:text-5xl font-extrabold text-slate-800 text-center mb-4 tracking-tight">Провери какви часове имаш</h1>
-                    <p className="text-slate-500 mb-12 text-lg md:text-xl text-center font-medium">Избери своя профил, за да видиш дневното си разписание.</p>
+                    <p className="text-slate-500 mb-10 text-lg md:text-xl text-center font-medium">Избери своя профил, за да видиш дневното си разписание.</p>
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
                         <button 
@@ -429,8 +888,23 @@
                             className="flex flex-col items-center justify-center p-8 bg-white rounded-[2rem] shadow-md border-4 border-transparent hover:border-emerald-200 hover:shadow-xl hover:-translate-y-1 transition-all group md:h-64"
                         >
                             <Icons.Teacher />
-                            <span className="text-3xl md:text-4xl font-extrabold text-slate-700 group-hover:text-emerald-600 transition-colors">Учители</span>
+                            <span className="text-3xl md:text-4xl font-extrabold text-slate-700 group-hover:text-emerald-600 transition-colors">Персонал</span>
                         </button>
+                    </div>
+
+                    {/* СЕКЦИЯ АДМИНИСТРАЦИЯ ЗА ЕКСПОРТ */}
+                    <div className="mt-16 flex flex-col items-center w-full border-t-2 border-slate-200/60 pt-8">
+                        <p className="text-slate-400 mb-6 font-bold uppercase tracking-widest text-sm">Администрация: Пълно разписание</p>
+                        <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
+                            <button onClick={handleExportWord} className="flex items-center justify-center px-8 py-4 bg-[#2b579a] hover:bg-[#1e3f6f] text-white rounded-2xl font-bold shadow-md transition-all transform hover:-translate-y-1 w-full sm:w-auto">
+                                <Icons.Word />
+                                Експорт в Word
+                            </button>
+                            <button onClick={handleExportExcel} className="flex items-center justify-center px-8 py-4 bg-[#217346] hover:bg-[#175231] text-white rounded-2xl font-bold shadow-md transition-all transform hover:-translate-y-1 w-full sm:w-auto">
+                                <Icons.Excel />
+                                Експорт в Excel
+                            </button>
+                        </div>
                     </div>
                 </div>
             );
@@ -465,7 +939,7 @@
 
                             <button 
                                 disabled={!selectedId}
-                                onClick={() => { setUserType(isStudent ? 'student' : 'teacher'); setView('dashboard'); }}
+                                onClick={() => { setUserType(isStudent ? 'student' : 'teacher'); setView('dashboard'); setScheduleViewMode('daily'); }}
                                 className={`w-full p-4 md:p-6 rounded-xl text-2xl font-black transition-all shadow-md flex items-center justify-center ${selectedId ? 'bg-blue-600 text-white hover:bg-blue-700 hover:shadow-xl transform hover:-translate-y-1' : 'bg-slate-200 text-slate-400 cursor-not-allowed'}`}
                             >
                                 Продължи
@@ -480,7 +954,7 @@
                     return <div className="bg-emerald-100 text-emerald-800 p-6 rounded-[1.5rem] shadow-sm text-center text-2xl font-extrabold border-l-8 border-emerald-500 mb-8">Днес е почивен ден! Приятна почивка!</div>;
                 }
                 if (status.type === 'no_data') {
-                    return <div className="bg-slate-200 text-slate-600 p-6 rounded-[1.5rem] shadow-sm text-center text-2xl font-extrabold mb-8">Няма въведени часове за тази група/учител днес.</div>;
+                    return <div className="bg-slate-200 text-slate-600 p-6 rounded-[1.5rem] shadow-sm text-center text-2xl font-extrabold mb-8">Няма въведени часове за днес.</div>;
                 }
                 if (status.type === 'after_school') {
                     return <div className="bg-blue-100 text-blue-800 p-6 rounded-[1.5rem] shadow-sm text-center text-2xl font-extrabold border-l-8 border-blue-500 mb-8">Учебните часове за днес приключиха!</div>;
@@ -500,7 +974,7 @@
                     let teacherId = null;
                     if (status.data.teacher) {
                         teacherText = userType === 'student' ? `при ${formatTeacherName(TEACHERS[status.data.teacher])}` : `с ${status.data.isWith}`;
-                        teacherId = userType === 'student' ? status.data.teacher : null; // Снимка се показва само за ученици
+                        teacherId = userType === 'student' ? status.data.teacher : null;
                     }
 
                     return (
@@ -551,7 +1025,7 @@
                             
                             <div className="mb-4 flex flex-col items-start">
                                 <div className="text-emerald-800 text-xl font-medium leading-tight mb-2">
-                                    Следващият <span className="font-black text-2xl text-emerald-900">{getOrdinal(status.nextClass.slot.id)}</span> час {userType === 'student' ? 'имаш' : 'имате'}
+                                    Следващият <span className="font-black text-2xl text-emerald-900">{getSlotLabel(status.nextClass.slot.id)}</span> {userType === 'student' ? 'имаш' : 'имате'}
                                 </div>
                                 <div className="font-black text-3xl underline decoration-4 underline-offset-4 text-emerald-900 mb-4">
                                     {status.nextClass.data.subject}
@@ -568,7 +1042,7 @@
                             </div>
                             
                             <p className="text-emerald-900 text-xl font-black bg-emerald-200 inline-flex items-center px-4 py-2 rounded-lg shadow-sm border border-emerald-300">
-                                <Icons.Clock /> Часът започва след {status.startsIn} минути
+                                <Icons.Clock /> Започва след {status.startsIn} минути
                             </p>
                         </div>
                     );
@@ -578,7 +1052,7 @@
                         <div className="bg-sky-50 border-l-8 border-sky-400 p-6 md:p-8 rounded-[1.5rem] shadow-md mb-8">
                             <h3 className="text-3xl font-extrabold text-sky-900 mb-4">В момента {userType === 'student' ? 'имаш' : 'имате'} свободен час!</h3>
                             {status.nextClass ? (
-                                <p className="text-sky-800 text-xl font-medium">Следващият <span className="font-bold">{getOrdinal(status.nextClass.slot.id)}</span> час е <span className="font-black bg-white px-2 py-1 rounded shadow-sm text-sky-900">{status.nextClass.data.subject}</span> и започва след <span className="font-black text-sky-900">{status.nextClass.slot.start - currentMins} минути</span>.</p>
+                                <p className="text-sky-800 text-xl font-medium">Следващият <span className="font-bold">{getSlotLabel(status.nextClass.slot.id)}</span> е <span className="font-black bg-white px-2 py-1 rounded shadow-sm text-sky-900">{status.nextClass.data.subject}</span> и започва след <span className="font-black text-sky-900">{status.nextClass.slot.start - currentMins} минути</span>.</p>
                             ) : (
                                 <p className="text-sky-800 text-xl font-medium">Нямате повече часове за днес.</p>
                             )}
@@ -588,95 +1062,250 @@
                 return null;
             };
 
+            const renderWeeklyView = () => {
+                return (
+                    <div className="mt-4 flex-1 animate-[fadeIn_0.3s_ease-out] w-full">
+                        
+                        {/* ДЕСКТОП ИЗГЛЕД НА СЕДМИЦАТА (Таблица) */}
+                        <div className="hidden lg:block overflow-x-auto pb-6">
+                            <table className="w-full text-left border-separate border-spacing-y-3 border-spacing-x-2">
+                                <thead>
+                                    <tr>
+                                        <th className="p-3 font-bold text-slate-400 uppercase tracking-widest w-28 text-center">Час</th>
+                                        {daysArr.map(day => (
+                                            <th key={day} className={`p-4 font-black text-xl capitalize text-center rounded-2xl transition-colors ${day === todayStr && !isWeekend ? 'bg-blue-600 text-white shadow-md' : 'bg-white text-slate-700 shadow-sm border border-slate-100'}`}>
+                                                {day}
+                                                {day === todayStr && !isWeekend && <div className="text-xs font-bold text-blue-200 uppercase mt-1">Днес</div>}
+                                            </th>
+                                        ))}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {userSlots.map(slot => {
+                                        const hasClassAnyDay = daysArr.some(day => fullWeekSchedule[day]?.[slot.id]);
+                                        if (!hasClassAnyDay) return null;
+
+                                        return (
+                                            <tr key={slot.id}>
+                                                <td className="p-3 align-middle text-center bg-white rounded-2xl shadow-sm border border-slate-100">
+                                                    <div className="font-black text-lg text-slate-700">{getSlotLabel(slot.id)}</div>
+                                                    <div className="text-[11px] font-bold text-slate-400 mt-1 whitespace-nowrap">{formatTimeDisplay(slot.start)}</div>
+                                                    <div className="text-[11px] font-bold text-slate-400 whitespace-nowrap">{formatTimeDisplay(slot.end)}</div>
+                                                </td>
+                                                {daysArr.map(day => {
+                                                    const classData = fullWeekSchedule[day]?.[slot.id];
+                                                    const isToday = day === todayStr && !isWeekend;
+                                                    const isPast = isToday && currentMins > slot.end;
+                                                    const isCurrent = isToday && currentMins >= slot.start && currentMins <= slot.end;
+
+                                                    let teacherText = "";
+                                                    if (classData && classData.teacher) {
+                                                        teacherText = userType === 'student' ? formatTeacherName(TEACHERS[classData.teacher]) : classData.isWith;
+                                                    }
+
+                                                    return (
+                                                        <td key={day} className={`p-4 align-top rounded-2xl transition-all border ${
+                                                            !classData ? 'bg-transparent border-transparent' : 
+                                                            isCurrent ? 'bg-blue-50 shadow-md border-blue-200 ring-2 ring-blue-400 transform scale-[1.02] z-10' : 
+                                                            isPast ? 'bg-slate-100 border-slate-200 opacity-60 grayscale' : 
+                                                            'bg-white shadow-sm border-slate-100 hover:shadow-md'
+                                                        }`}>
+                                                            {classData ? (
+                                                                <div className="flex flex-col h-full min-h-[5rem]">
+                                                                    <div className={`font-black text-lg leading-tight mb-3 ${isCurrent ? 'text-blue-900' : 'text-slate-800'}`}>
+                                                                        {classData.subject}
+                                                                    </div>
+                                                                    {teacherText && (
+                                                                        <div className="mt-auto flex items-center pt-2">
+                                                                            {userType === 'student' && classData.teacher ? (
+                                                                                <TeacherAvatar teacherId={classData.teacher} sizeClass="w-8 h-8 mr-2 border-2" />
+                                                                            ) : (
+                                                                                <Icons.User />
+                                                                            )}
+                                                                            <span className={`text-xs font-bold leading-tight ${isCurrent ? 'text-blue-700' : 'text-slate-500'}`}>
+                                                                                {teacherText}
+                                                                            </span>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            ) : (
+                                                                <div className="flex items-center justify-center h-full opacity-30">
+                                                                    <span className="w-2 h-2 rounded-full bg-slate-300"></span>
+                                                                </div>
+                                                            )}
+                                                        </td>
+                                                    );
+                                                })}
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        {/* МОБИЛЕН ИЗГЛЕД НА СЕДМИЦАТА (Списък) */}
+                        <div className="lg:hidden space-y-8 pb-8">
+                            {daysArr.map(day => {
+                                const daySlots = userSlots.filter(s => fullWeekSchedule[day]?.[s.id]);
+                                if(daySlots.length === 0) return null;
+                                
+                                const isToday = day === todayStr && !isWeekend;
+
+                                return (
+                                    <div key={day} className={`p-5 rounded-[2rem] shadow-sm border ${isToday ? 'bg-blue-50/50 border-blue-200' : 'bg-white border-slate-100'}`}>
+                                        <div className="flex items-center justify-between border-b-2 border-slate-100/80 pb-3 mb-4">
+                                            <h3 className={`text-2xl font-black capitalize ${isToday ? 'text-blue-700' : 'text-slate-700'}`}>
+                                                {day}
+                                            </h3>
+                                            {isToday && <span className="bg-blue-600 text-white text-xs font-bold px-3 py-1 rounded-lg uppercase tracking-wider shadow-sm">Днес</span>}
+                                        </div>
+                                        <div className="space-y-3">
+                                            {daySlots.map(slot => {
+                                                const classData = fullWeekSchedule[day][slot.id];
+                                                const isPast = isToday && currentMins > slot.end;
+                                                const isCurrent = isToday && currentMins >= slot.start && currentMins <= slot.end;
+
+                                                let teacherText = "";
+                                                if (classData.teacher) {
+                                                    teacherText = userType === 'student' ? formatTeacherName(TEACHERS[classData.teacher]) : classData.isWith;
+                                                }
+
+                                                return (
+                                                    <div key={slot.id} className={`flex items-center p-3 rounded-2xl ${isPast ? 'opacity-60 bg-slate-100 grayscale' : isCurrent ? 'bg-white shadow-md ring-2 ring-blue-400' : 'bg-slate-50'}`}>
+                                                        <div className="w-16 text-center shrink-0 border-r-2 border-slate-200 pr-2 mr-3">
+                                                            <div className={`text-sm font-black ${isCurrent ? 'text-blue-600' : 'text-slate-600'}`}>{getSlotLabel(slot.id)}</div>
+                                                        </div>
+                                                        <div className="flex-1">
+                                                            <div className={`text-lg font-black leading-tight ${isCurrent ? 'text-blue-900' : 'text-slate-800'}`}>{classData.subject}</div>
+                                                            {teacherText && (
+                                                                <div className={`flex items-center mt-1 ${isCurrent ? 'text-blue-700' : 'text-slate-500'}`}>
+                                                                    {userType === 'student' && classData.teacher ? (
+                                                                        <TeacherAvatar teacherId={classData.teacher} sizeClass="w-6 h-6 mr-1 border" />
+                                                                    ) : null}
+                                                                    <span className="text-sm font-bold">{teacherText}</span>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                );
+            };
+
             const renderDashboard = () => {
                 const displayName = userType === 'student' ? selectedId : TEACHERS[selectedId];
-                const activeSlots = SLOTS.filter(s => currentSchedule[s.id]);
+                const activeSlots = userSlots.filter(s => currentSchedule[s.id]);
 
                 return (
-                    <div className="max-w-5xl mx-auto pt-8 px-4 pb-20 fade-in w-full flex flex-col flex-1">
+                    <div className="max-w-6xl mx-auto pt-8 px-4 pb-20 fade-in w-full flex flex-col flex-1">
+                        
+                        {/* HEADER НА ПРОФИЛА */}
                         <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 bg-white p-5 md:p-6 rounded-[2rem] shadow-sm border border-slate-100">
-                            <button onClick={() => setView(userType === 'student' ? 'select_student' : 'select_teacher')} className="flex items-center justify-center p-3 bg-slate-100 rounded-full shadow-inner text-slate-600 hover:text-blue-600 hover:bg-blue-50 transition-all self-start md:self-auto mb-4 md:mb-0 group w-12 h-12">
+                            <button onClick={goHome} className="flex items-center justify-center p-3 bg-slate-100 rounded-full shadow-inner text-slate-600 hover:text-blue-600 hover:bg-blue-50 transition-all self-start md:self-auto mb-4 md:mb-0 group w-12 h-12 shrink-0">
                                 <Icons.Back />
                             </button>
-                            <div className="text-left md:text-right">
+                            <div className="text-left md:text-right w-full md:pl-6">
                                 <div className="text-sm text-slate-400 font-bold uppercase tracking-widest mb-1">Профил</div>
-                                <div className="text-3xl md:text-4xl font-black text-slate-800 tracking-tight leading-tight">{displayName}</div>
-                                <div className="text-xs mt-2 flex justify-start md:justify-end items-center space-x-2">
-                                    {timeSyncStatus === 'synced' ? (
-                                        <span className="text-emerald-700 font-bold bg-emerald-100 px-3 py-1 rounded-full shadow-sm border border-emerald-200">🕒 Сверено с интернет</span>
-                                    ) : timeSyncStatus === 'syncing' ? (
-                                        <span className="text-blue-500 font-bold">🕒 Сверяване...</span>
-                                    ) : (
-                                        <span className="text-slate-600 font-bold bg-slate-200 px-3 py-1 rounded-full shadow-sm">🕒 Локално време</span>
-                                    )}
+                                <div className="text-3xl md:text-4xl font-black text-slate-800 tracking-tight leading-tight mb-5">{displayName}</div>
+                                
+                                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between md:justify-end gap-4 w-full">
+                                    {/* БУТОНИ ДНЕС / СЕДМИЦА */}
+                                    <div className="flex bg-slate-100 p-1.5 rounded-2xl w-full sm:w-auto shadow-inner">
+                                        <button 
+                                            onClick={() => setScheduleViewMode('daily')} 
+                                            className={`flex-1 sm:flex-none px-6 py-2 rounded-xl font-black text-lg transition-all ${scheduleViewMode === 'daily' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500 hover:text-slate-700'}`}
+                                        >
+                                            Днес
+                                        </button>
+                                        <button 
+                                            onClick={() => setScheduleViewMode('weekly')} 
+                                            className={`flex-1 sm:flex-none px-6 py-2 rounded-xl font-black text-lg transition-all ${scheduleViewMode === 'weekly' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500 hover:text-slate-700'}`}
+                                        >
+                                            Седмица
+                                        </button>
+                                    </div>
+
+                                    {/* СТАТУС ВРЕМЕ */}
+                                    <div className="text-xs flex items-center space-x-2 shrink-0">
+                                        {timeSyncStatus === 'synced' ? (
+                                            <span className="text-emerald-700 font-bold bg-emerald-100 px-3 py-1.5 rounded-full border border-emerald-200">🕒 Сверено</span>
+                                        ) : timeSyncStatus === 'syncing' ? (
+                                            <span className="text-blue-500 font-bold">🕒 Сверяване...</span>
+                                        ) : (
+                                            <span className="text-slate-600 font-bold bg-slate-200 px-3 py-1.5 rounded-full">🕒 Локално</span>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         </div>
 
-                        {renderStatusBox()}
+                        {scheduleViewMode === 'daily' ? (
+                            <>
+                                {/* ДНЕВНА ПРОГРАМА */}
+                                {renderStatusBox()}
+                                
+                                {activeSlots.length > 0 && !isWeekend && (
+                                    <div className="mt-6 flex-1 max-w-4xl mx-auto w-full">
+                                        <h4 className="text-2xl md:text-3xl font-black text-slate-700 mb-6 ml-2 uppercase tracking-widest opacity-80 border-b-4 border-slate-200 pb-2">
+                                            График за деня <span className="text-blue-600">({todayStr})</span>
+                                        </h4>
+                                        <div className="space-y-4">
+                                            {activeSlots.map(slot => {
+                                                const classData = currentSchedule[slot.id];
+                                                const isPast = currentMins > slot.end;
+                                                const isCurrent = currentMins >= slot.start && currentMins <= slot.end;
 
-                        {activeSlots.length > 0 && !isWeekend && (
-                            <div className="mt-6 flex-1">
-                                <h4 className="text-2xl md:text-3xl font-black text-slate-700 mb-6 ml-2 uppercase tracking-widest opacity-80 border-b-4 border-slate-200 pb-2">
-                                    График за деня <span className="text-blue-600">({todayStr})</span>
-                                </h4>
-                                <div className="space-y-4">
-                                    {activeSlots.map(slot => {
-                                        const classData = currentSchedule[slot.id];
-                                        const isPast = currentMins > slot.end;
-                                        const isCurrent = currentMins >= slot.start && currentMins <= slot.end;
+                                                let teacherText = "";
+                                                if (classData.teacher) {
+                                                    teacherText = userType === 'student' ? `при ${formatTeacherName(TEACHERS[classData.teacher])}` : `с ${classData.isWith}`;
+                                                }
 
-                                        let teacherText = "";
-                                        if (classData.teacher) {
-                                            teacherText = userType === 'student' ? `при ${formatTeacherName(TEACHERS[classData.teacher])}` : `с ${classData.isWith}`;
-                                        }
-
-                                        // НОВ ДИЗАЙН: По-компактни карти
-                                        return (
-                                            <div key={slot.id} className={`relative overflow-hidden flex flex-col lg:flex-row lg:items-center p-5 lg:p-0 rounded-[1.5rem] transition-all shadow-sm border border-slate-100 ${isPast ? 'bg-slate-200 opacity-60 grayscale' : isCurrent ? 'bg-white shadow-xl ring-4 ring-blue-500 transform scale-[1.01] z-10' : 'bg-white hover:shadow-md'}`}>
-                                                
-                                                {/* Цветна лента отляво */}
-                                                <div className={`absolute left-0 top-0 bottom-0 w-3 ${isPast ? 'bg-slate-400' : isCurrent ? 'bg-blue-600' : 'bg-slate-300'}`}></div>
-                                                
-                                                <div className="flex flex-col lg:flex-row lg:w-full lg:items-center pl-5 lg:pl-8 lg:pr-5 py-1 lg:py-4">
-                                                    
-                                                    {/* ВРЕМЕ И ЧАС (Отляво на десктоп) */}
-                                                    <div className="flex flex-col items-start lg:w-1/4 mb-3 lg:mb-0 lg:pr-4 shrink-0">
-                                                        <span className={`inline-block px-3 py-1 rounded-lg text-base md:text-lg font-bold shadow-sm w-max mb-2 ${isCurrent ? 'bg-blue-600 text-white' : 'bg-slate-100 border border-slate-200 text-slate-700'}`}>
-                                                            {getOrdinal(slot.id)} час
-                                                        </span>
-                                                        <span className="flex items-center text-base md:text-lg font-bold text-slate-500 bg-slate-50 px-3 py-1 rounded-lg w-max border border-slate-100">
-                                                            <Icons.Clock /> {formatTimeDisplay(slot.start)} - {formatTimeDisplay(slot.end)}
-                                                        </span>
-                                                    </div>
-
-                                                    {/* ПРЕДМЕТ (Среда на десктоп) */}
-                                                    <div className="lg:flex-1 lg:border-l-4 lg:border-slate-100 lg:px-6 mb-3 lg:mb-0 flex flex-col justify-center min-h-[4rem]">
-                                                        <h5 className={`text-2xl md:text-3xl font-black leading-tight tracking-tight ${isCurrent ? 'text-blue-900' : 'text-slate-800'}`}>
-                                                            {classData.subject}
-                                                        </h5>
-                                                    </div>
-
-                                                    {/* ПРЕПОДАВАТЕЛ / ПАРАЛЕЛКА СЪС СНИМКА (Отдясно на десктоп) */}
-                                                    <div className="lg:w-[40%] flex items-center lg:justify-end mt-2 lg:mt-0 shrink-0">
-                                                        {teacherText && (
-                                                            <div className={`flex items-center text-lg md:text-2xl font-extrabold ${isCurrent ? 'text-blue-800' : 'text-slate-600'} bg-slate-50 lg:bg-transparent px-4 py-3 lg:p-0 rounded-xl w-full lg:w-auto border border-slate-100 lg:border-none`}>
-                                                                {userType === 'student' && classData.teacher ? (
-                                                                    <TeacherAvatar teacherId={classData.teacher} sizeClass="w-14 h-14 lg:w-20 lg:h-20 mr-3 md:mr-4" />
-                                                                ) : (
-                                                                    <Icons.User />
-                                                                )}
-                                                                <span className="text-left lg:text-right w-full leading-tight">{teacherText}</span>
+                                                return (
+                                                    <div key={slot.id} className={`relative overflow-hidden flex flex-col lg:flex-row lg:items-center p-5 lg:p-0 rounded-[1.5rem] transition-all shadow-sm border border-slate-100 ${isPast ? 'bg-slate-200 opacity-60 grayscale' : isCurrent ? 'bg-white shadow-xl ring-4 ring-blue-500 transform scale-[1.01] z-10' : 'bg-white hover:shadow-md'}`}>
+                                                        <div className={`absolute left-0 top-0 bottom-0 w-3 ${isPast ? 'bg-slate-400' : isCurrent ? 'bg-blue-600' : 'bg-slate-300'}`}></div>
+                                                        <div className="flex flex-col lg:flex-row lg:w-full lg:items-center pl-5 lg:pl-8 lg:pr-5 py-1 lg:py-4">
+                                                            <div className="flex flex-col items-start lg:w-1/4 mb-3 lg:mb-0 lg:pr-4 shrink-0">
+                                                                <span className={`inline-block px-3 py-1 rounded-lg text-base md:text-lg font-bold shadow-sm w-max mb-2 ${isCurrent ? 'bg-blue-600 text-white' : 'bg-slate-100 border border-slate-200 text-slate-700'}`}>
+                                                                    {getSlotLabel(slot.id)}
+                                                                </span>
+                                                                <span className="flex items-center text-base md:text-lg font-bold text-slate-500 bg-slate-50 px-3 py-1 rounded-lg w-max border border-slate-100">
+                                                                    <Icons.Clock /> {formatTimeDisplay(slot.start)} - {formatTimeDisplay(slot.end)}
+                                                                </span>
                                                             </div>
-                                                        )}
+                                                            <div className="lg:flex-1 lg:border-l-4 lg:border-slate-100 lg:px-6 mb-3 lg:mb-0 flex flex-col justify-center min-h-[4rem]">
+                                                                <h5 className={`text-2xl md:text-3xl font-black leading-tight tracking-tight ${isCurrent ? 'text-blue-900' : 'text-slate-800'}`}>
+                                                                    {classData.subject}
+                                                                </h5>
+                                                            </div>
+                                                            <div className="lg:w-[40%] flex items-center lg:justify-end mt-2 lg:mt-0 shrink-0">
+                                                                {teacherText && (
+                                                                    <div className={`flex items-center text-lg md:text-2xl font-extrabold ${isCurrent ? 'text-blue-800' : 'text-slate-600'} bg-slate-50 lg:bg-transparent px-4 py-3 lg:p-0 rounded-xl w-full lg:w-auto border border-slate-100 lg:border-none`}>
+                                                                        {userType === 'student' && classData.teacher ? (
+                                                                            <TeacherAvatar teacherId={classData.teacher} sizeClass="w-14 h-14 lg:w-20 lg:h-20 mr-3 md:mr-4" />
+                                                                        ) : (
+                                                                            <Icons.User />
+                                                                        )}
+                                                                        <span className="text-left lg:text-right w-full leading-tight">{teacherText}</span>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        </div>
                                                     </div>
-
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                )}
+                            </>
+                        ) : (
+                            /* СЕДМИЧНА ПРОГРАМА */
+                            renderWeeklyView()
                         )}
                     </div>
                 );
@@ -691,7 +1320,7 @@
                     </div>
 
                     {/* Footer - ЦСОП */}
-                    <div className="mt-auto pt-10 pb-6 text-center text-slate-500 w-full bg-slate-100/50">
+                    <div className="mt-auto pt-10 pb-6 text-center text-slate-500 w-full bg-slate-100/50 border-t border-slate-200">
                         <div className="font-black text-lg mb-1 text-slate-600 uppercase tracking-widest">
                             Седмично разписание за II срок
                         </div>
@@ -703,7 +1332,7 @@
                         </div>
                     </div>
 
-                    {/* ПАНЕЛ ЗА ТЕСТВАНЕ (позволява превъртане на времето) */}
+                    {/* ПАНЕЛ ЗА ТЕСТВАНЕ */}
                     <div className="fixed bottom-4 right-4 bg-white/95 backdrop-blur-xl p-4 rounded-2xl shadow-xl border border-slate-200 z-50 text-sm">
                         <label className="flex items-center space-x-3 text-slate-800 font-bold cursor-pointer">
                             <input type="checkbox" checked={testTimeMode} onChange={e => setTestTimeMode(e.target.checked)} className="w-5 h-5 text-blue-600 rounded" />
